@@ -1,6 +1,6 @@
 pub mod virtdisk;
-pub mod virtdiskdefs;
 pub mod virtdisk_bindings;
+pub mod virtdiskdefs;
 
 pub mod windefs {
     use libc;

@@ -57,7 +57,7 @@ extern "C" {
         flags: u32, // storage_dependency::GetFlag
         storageDependencyInfoSize: u64,
         storageDependencyInfo: *const storage_dependency::Info,
-        sizeUsed: *const u64
+        sizeUsed: *const u64,
     ) -> DWord;
 
     pub fn GetVirtualDiskInformation(
@@ -92,10 +92,7 @@ extern "C" {
         metaData: *const Void,
     ) -> DWord;
 
-    pub fn DeleteVirtualDiskMetadata(
-        virtualDiskHandle: Handle,
-        item: *const Guid,
-    ) -> DWord;
+    pub fn DeleteVirtualDiskMetadata(virtualDiskHandle: Handle, item: *const Guid) -> DWord;
 
     pub fn GetVirtualDiskOperationProgress(
         virtualDiskHandle: Handle,
@@ -114,7 +111,7 @@ extern "C" {
         virtualDiskHandle: Handle,
         flags: u32, // merge_virtual_disk::Flag
         parameters: *const merge_virtual_disk::Parameters,
-        overlapped: *const Overlapped
+        overlapped: *const Overlapped,
     ) -> DWord;
 
     pub fn ExpandVirtualDisk(
@@ -138,16 +135,11 @@ extern "C" {
         overlapped: *const Overlapped,
     ) -> DWord;
 
-    pub fn BreakMirrorVirtualDisk(
-        virtualDiskHandle: Handle,
-    ) -> DWord;
+    pub fn BreakMirrorVirtualDisk(virtualDiskHandle: Handle) -> DWord;
 
-    pub fn AddVirtualDiskParent(
-        virtualDiskHandle: Handle,
-        parentPath: PCWStr
-    ) -> DWord;
+    pub fn AddVirtualDiskParent(virtualDiskHandle: Handle, parentPath: PCWStr) -> DWord;
 
-    pub fn QueryChangesVirtualDisk (
+    pub fn QueryChangesVirtualDisk(
         virtualDiskHandle: Handle,
         changeTrackingId: PCWStr,
         byteOffset: u64,
@@ -158,25 +150,25 @@ extern "C" {
         processedLength: *mut u64,
     ) -> DWord;
 
-    pub fn TakeSnapshotVhdSet (
+    pub fn TakeSnapshotVhdSet(
         virtualDiskHandle: Handle,
         parameters: *const take_snapshot_vhdset::Parameters,
         flags: u32, // take_snapshot_vhdset::Flag
     ) -> DWord;
 
-    pub fn DeleteSnapshotVhdSet (
+    pub fn DeleteSnapshotVhdSet(
         virtualDiskHandle: Handle,
         parameters: *const delete_snapshot_vhdset::Parameters,
         flags: u32, // delete_snapshot_vhdset::Flag
     ) -> DWord;
 
-    pub fn ModifyVhdSet (
+    pub fn ModifyVhdSet(
         virtualDiskHandle: Handle,
         parameters: *const modify_vhdset::Parameters,
         flags: u32, // modify_vhdset::Flag
     ) -> DWord;
 
-    pub fn ApplySnapshotVhdSet (
+    pub fn ApplySnapshotVhdSet(
         virtualDiskHandle: Handle,
         parameters: *const apply_snapshot_vhdset::Parameters,
         flags: u32, // apply_snapshot_vhdset::Flag
@@ -196,7 +188,5 @@ extern "C" {
         overlapped: *mut Overlapped,
     ) -> DWord;
 
-    pub fn CompleteForkVirtualDisk(
-        virtualDiskHandle: Handle,
-    ) -> DWord;
+    pub fn CompleteForkVirtualDisk(virtualDiskHandle: Handle) -> DWord;
 }

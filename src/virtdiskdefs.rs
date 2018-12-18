@@ -53,7 +53,6 @@ pub enum VirtualDiskAccessMask {
 }
 
 pub mod open_virtual_disk {
-    use crate::windefs::*;
     use super::*;
 
     #[repr(C)]
@@ -160,7 +159,6 @@ pub mod open_virtual_disk {
 }
 
 pub mod create_virtual_disk {
-    use crate::windefs::*;
     use super::*;
 
     #[repr(C)]
@@ -338,7 +336,6 @@ pub mod attach_virtual_disk {
         pub version_details: VersionDetails,
     }
 
-
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
     pub enum Flag {
@@ -379,7 +376,6 @@ pub mod detach_virtual_disk {
 }
 
 pub mod storage_dependency {
-    use crate::windefs::*;
     use super::*;
 
     #[repr(C)]
@@ -479,7 +475,6 @@ pub mod storage_dependency {
 }
 
 pub mod get_virtual_disk {
-    use crate::windefs::*;
     use super::*;
 
     #[repr(C)]
@@ -565,7 +560,6 @@ pub mod get_virtual_disk {
 pub const VIRTUAL_DISK_MAXIMUM_CHANGE_TRACKING_ID_LENGTH: u64 = 256;
 
 pub mod set_virtual_disk {
-    use crate::windefs::*;
     use super::*;
 
     #[repr(C)]
