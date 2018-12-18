@@ -539,3 +539,49 @@ pub struct GetVirtualDiskInfo {
 }
 
 pub const VIRTUAL_DISK_MAXIMUM_CHANGE_TRACKING_ID_LENGTH: u64 = 256;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum SetVirtualDiskInfoVersion {
+    Unspecified = 0,
+    ParentPath = 1,
+    Identifier = 2,
+    ParentPathWithDepth = 3,
+    PhysicalSectorSize = 4,
+    VirtualDiskId = 5,
+    ChangeTrackingState = 6,
+    ParentLocator = 7,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct SetVirtualDiskInfoParentPathWithDepthInfo {
+    pub child_depth: u64,
+    pub parent_file_path: PCWStr,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct SetVirtualDiskInfoParentLocator {
+    pub linkage_id: Guid,
+    pub parent_file_path: PCWStr,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union SetVirtualDiskInfoVersionDetails {
+    pub parent_file_path: PCWStr,
+    pub unique_identifier: Guid,
+    pub parent_with_depth_info: SetVirtualDiskInfoParentPathWithDepthInfo,
+    pub vhd_physical_sector_size: u64,
+    pub virtual_disk_id: Guid,
+    pub change_tracking_enabled: Bool,
+    pub parent_locator: SetVirtualDiskInfoParentLocator,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct SetVirtualDiskInfo {
+    pub version: SetVirtualDiskInfoVersion,
+    pub version_details: SetVirtualDiskInfoVersionDetails,
+}

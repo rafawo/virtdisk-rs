@@ -67,108 +67,37 @@ extern "C" {
         sizeUsed: *mut u64,
     ) -> DWord;
 
+    pub fn SetVirtualDiskInformation(
+        virtualDiskHandle: Handle,
+        virtualDiskInfo: *const SetVirtualDiskInfo,
+    ) -> DWord;
+
+    pub fn EnumerateVirtualDiskMetadata(
+        virtualDiskHandle: Handle,
+        numberOfItems: *mut u64,
+        items: *mut Guid,
+    ) -> DWord;
+
+    pub fn GetVirtualDiskMetadata(
+        VirtualDiskHandle: Handle,
+        item: *const Guid,
+        metaDataSize: *mut u64,
+        metaData: *mut Void,
+    ) -> DWord;
+
+    pub fn SetVirtualDiskMetadata(
+        virtualDiskHandle: Handle,
+        item: *const Guid,
+        metaDataSize: u64,
+        metaData: *const Void,
+    ) -> DWord;
+
+    pub fn DeleteVirtualDiskMetadata(
+        virtualDiskHandle: Handle,
+        item: *const Guid,
+    ) -> DWord;
+
 } /*
-
-//
-// SetVirtualDiskInformation
-//
-
-// Version definitions
-typedef enum _SET_VIRTUAL_DISK_INFO_VERSION
-{
-    SET_VIRTUAL_DISK_INFO_UNSPECIFIED            = 0,
-    SET_VIRTUAL_DISK_INFO_PARENT_PATH            = 1,
-    SET_VIRTUAL_DISK_INFO_IDENTIFIER             = 2,
-    SET_VIRTUAL_DISK_INFO_PARENT_PATH_WITH_DEPTH = 3,
-    SET_VIRTUAL_DISK_INFO_PHYSICAL_SECTOR_SIZE   = 4,
-    SET_VIRTUAL_DISK_INFO_VIRTUAL_DISK_ID        = 5,
-    SET_VIRTUAL_DISK_INFO_CHANGE_TRACKING_STATE  = 6,
-    SET_VIRTUAL_DISK_INFO_PARENT_LOCATOR         = 7,
-
-} SET_VIRTUAL_DISK_INFO_VERSION;
-
-
-// Versioned parameter structure for SetVirtualDiskInformation
-typedef struct _SET_VIRTUAL_DISK_INFO
-{
-    SET_VIRTUAL_DISK_INFO_VERSION Version;
-
-    union
-    {
-        PCWSTR ParentFilePath;
-
-        GUID UniqueIdentifier;
-
-        struct
-        {
-            ULONG  ChildDepth;
-            PCWSTR ParentFilePath;
-        } ParentPathWithDepthInfo;
-
-        ULONG VhdPhysicalSectorSize;
-
-        // SET_VIRTUAL_DISK_INFO_VIRTUAL_DISK_ID
-        GUID VirtualDiskId;
-
-        BOOL ChangeTrackingEnabled;
-
-        struct
-        {
-            GUID   LinkageId;
-            PCWSTR ParentFilePath;
-        } ParentLocator;
-    };
-} SET_VIRTUAL_DISK_INFO, *PSET_VIRTUAL_DISK_INFO;
-
-
-DWORD
-WINAPI
-SetVirtualDiskInformation(
-    _In_ HANDLE                 VirtualDiskHandle,
-    _In_ PSET_VIRTUAL_DISK_INFO VirtualDiskInfo
-    );
-
-
-#if (NTDDI_VERSION >= NTDDI_WIN8)
-
-DWORD
-WINAPI
-EnumerateVirtualDiskMetadata(
-    _In_ HANDLE VirtualDiskHandle,
-    _Inout_ PULONG NumberOfItems,
-    _Out_writes_(*NumberOfItems) GUID* Items
-    );
-
-
-DWORD
-WINAPI
-GetVirtualDiskMetadata(
-    _In_ HANDLE VirtualDiskHandle,
-    _In_ const GUID *Item,
-    _Inout_ PULONG MetaDataSize,
-    _Out_writes_bytes_(*MetaDataSize) PVOID MetaData
-    );
-
-
-DWORD
-WINAPI
-SetVirtualDiskMetadata(
-    _In_ HANDLE VirtualDiskHandle,
-    _In_ const GUID *Item,
-    _In_ ULONG MetaDataSize,
-    _In_reads_bytes_(MetaDataSize) const void *MetaData
-    );
-
-
-DWORD
-WINAPI
-DeleteVirtualDiskMetadata(
-    _In_ HANDLE VirtualDiskHandle,
-    _In_ const GUID *Item
-    );
-
-#endif // NTDDI_VERSION >= NTDDI_WIN8
-
 
 //
 // GetVirtualDiskOperationProgress
@@ -176,18 +105,18 @@ DeleteVirtualDiskMetadata(
 
 typedef struct _VIRTUAL_DISK_PROGRESS
 {
-    DWORD      OperationStatus;
+    DWord      OperationStatus;
     ULONGLONG  CurrentValue;
     ULONGLONG  CompletionValue;
 } VIRTUAL_DISK_PROGRESS, *PVIRTUAL_DISK_PROGRESS;
 
 
-DWORD WINAPI
+DWord WINAPI
 GetVirtualDiskOperationProgress(
     _In_      HANDLE                 VirtualDiskHandle,
     _In_      LPOVERLAPPED           Overlapped,
     _Out_     PVIRTUAL_DISK_PROGRESS Progress
-    );
+    ) -> DWord;
 
 
 
@@ -229,17 +158,17 @@ typedef enum _COMPACT_VIRTUAL_DISK_FLAG
 } COMPACT_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(COMPACT_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(COMPACT_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
-DWORD
+DWord
 WINAPI
 CompactVirtualDisk(
     _In_     HANDLE                           VirtualDiskHandle,
     _In_     COMPACT_VIRTUAL_DISK_FLAG        Flags,
     _In_opt_ PCOMPACT_VIRTUAL_DISK_PARAMETERS Parameters,
     _In_opt_ LPOVERLAPPED                     Overlapped
-    );
+    ) -> DWord;
 
 
 
@@ -288,17 +217,17 @@ typedef enum _MERGE_VIRTUAL_DISK_FLAG
 } MERGE_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(MERGE_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(MERGE_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
-DWORD
+DWord
 WINAPI
 MergeVirtualDisk(
     _In_     HANDLE                         VirtualDiskHandle,
     _In_     MERGE_VIRTUAL_DISK_FLAG        Flags,
     _In_     PMERGE_VIRTUAL_DISK_PARAMETERS Parameters,
     _In_opt_ LPOVERLAPPED                   Overlapped
-    );
+    ) -> DWord;
 
 
 
@@ -338,17 +267,17 @@ typedef enum _EXPAND_VIRTUAL_DISK_FLAG
 } EXPAND_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(EXPAND_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(EXPAND_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
-DWORD
+DWord
 WINAPI
 ExpandVirtualDisk(
     _In_     HANDLE                          VirtualDiskHandle,
     _In_     EXPAND_VIRTUAL_DISK_FLAG        Flags,
     _In_     PEXPAND_VIRTUAL_DISK_PARAMETERS Parameters,
     _In_opt_ LPOVERLAPPED                    Overlapped
-    );
+    ) -> DWord;
 
 
 //
@@ -397,19 +326,19 @@ typedef enum _RESIZE_VIRTUAL_DISK_FLAG
 } RESIZE_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(RESIZE_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(RESIZE_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
 #if (NTDDI_VERSION >= NTDDI_WIN8)
 
-DWORD
+DWord
 WINAPI
 ResizeVirtualDisk(
     _In_     HANDLE                          VirtualDiskHandle,
     _In_     RESIZE_VIRTUAL_DISK_FLAG        Flags,
     _In_     PRESIZE_VIRTUAL_DISK_PARAMETERS Parameters,
     _In_opt_ LPOVERLAPPED                    Overlapped
-    );
+    ) -> DWord;
 
 #endif // NTDDI_VERSION >= NTDDI_WIN8
 
@@ -451,19 +380,19 @@ typedef enum _MIRROR_VIRTUAL_DISK_FLAG
 } MIRROR_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(MIRROR_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(MIRROR_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
 #if (NTDDI_VERSION >= NTDDI_WIN8)
 
-DWORD
+DWord
 WINAPI
 MirrorVirtualDisk(
     _In_     HANDLE                          VirtualDiskHandle,
     _In_     MIRROR_VIRTUAL_DISK_FLAG        Flags,
     _In_     PMIRROR_VIRTUAL_DISK_PARAMETERS Parameters,
     _In_     LPOVERLAPPED                    Overlapped
-    );
+    ) -> DWord;
 
 #endif // NTDDI_VERSION >= NTDDI_WIN8
 
@@ -474,11 +403,11 @@ MirrorVirtualDisk(
 
 #if (NTDDI_VERSION >= NTDDI_WIN8)
 
-DWORD
+DWord
 WINAPI
 BreakMirrorVirtualDisk(
     _In_ HANDLE VirtualDiskHandle
-    );
+    ) -> DWord;
 
 #endif // NTDDI_VERSION >= NTDDI_WIN8
 
@@ -488,12 +417,12 @@ BreakMirrorVirtualDisk(
 
 #if (NTDDI_VERSION >= NTDDI_WIN8)
 
-DWORD
+DWord
 WINAPI
 AddVirtualDiskParent(
     _In_ HANDLE VirtualDiskHandle,
     _In_ PCWSTR ParentPath
-    );
+    ) -> DWord;
 
 #endif // NTDDI_VERSION >= NTDDI_WIN8
 
@@ -511,7 +440,7 @@ typedef enum _QUERY_CHANGES_VIRTUAL_DISK_FLAG
 } QUERY_CHANGES_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(QUERY_CHANGES_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(QUERY_CHANGES_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
 typedef enum _TAKE_SNAPSHOT_VHDSET_FLAG
@@ -522,7 +451,7 @@ typedef enum _TAKE_SNAPSHOT_VHDSET_FLAG
 } TAKE_SNAPSHOT_VHDSET_FLAG, *PTAKE_SNAPSHOT_VHDSET_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(TAKE_SNAPSHOT_VHDSET_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(TAKE_SNAPSHOT_VHDSET_FLAG) -> DWord;
 #endif
 
 typedef enum _TAKE_SNAPSHOT_VHDSET_VERSION
@@ -553,7 +482,7 @@ typedef enum _DELETE_SNAPSHOT_VHDSET_FLAG
 } DELETE_SNAPSHOT_VHDSET_FLAG, *PDELETE_SNAPSHOT_VHDSET_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(DELETE_SNAPSHOT_VHDSET_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(DELETE_SNAPSHOT_VHDSET_FLAG) -> DWord;
 #endif
 
 typedef enum _DELETE_SNAPSHOT_VHDSET_VERSION
@@ -593,7 +522,7 @@ typedef enum _MODIFY_VHDSET_FLAG
 } MODIFY_VHDSET_FLAG, *PMODIFY_VHDSET_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(MODIFY_VHDSET_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(MODIFY_VHDSET_FLAG) -> DWord;
 #endif
 
 typedef struct _MODIFY_VHDSET_PARAMETERS
@@ -622,7 +551,7 @@ typedef enum _APPLY_SNAPSHOT_VHDSET_FLAG
 } APPLY_SNAPSHOT_VHDSET_FLAG, *PAPPLY_SNAPSHOT_VHDSET_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(APPLY_SNAPSHOT_VHDSET_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(APPLY_SNAPSHOT_VHDSET_FLAG) -> DWord;
 #endif
 
 typedef enum _APPLY_SNAPSHOT_VHDSET_VERSION
@@ -654,7 +583,7 @@ typedef enum _RAW_SCSI_VIRTUAL_DISK_FLAG
 } RAW_SCSI_VIRTUAL_DISK_FLAG, *PRAW_SCSI_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(RAW_SCSI_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(RAW_SCSI_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
 typedef enum _RAW_SCSI_VIRTUAL_DISK_VERSION
@@ -713,7 +642,7 @@ typedef struct _RAW_SCSI_VIRTUAL_DISK_RESPONSE
 
 #if (NTDDI_VERSION >= NTDDI_WINTHRESHOLD)
 
-DWORD
+DWord
 WINAPI
 QueryChangesVirtualDisk (
     _In_ HANDLE VirtualDiskHandle,
@@ -724,48 +653,48 @@ QueryChangesVirtualDisk (
     _Out_writes_to_(*RangeCount, *RangeCount) PQUERY_CHANGES_VIRTUAL_DISK_RANGE Ranges,
     _Inout_ PULONG RangeCount,
     _Out_ PULONG64 ProcessedLength
-    );
+    ) -> DWord;
 
-DWORD
+DWord
 WINAPI
 TakeSnapshotVhdSet (
     _In_ HANDLE VirtualDiskHandle,
     _In_ const PTAKE_SNAPSHOT_VHDSET_PARAMETERS Parameters,
     _In_ TAKE_SNAPSHOT_VHDSET_FLAG Flags
-    );
+    ) -> DWord;
 
-DWORD
+DWord
 WINAPI
 DeleteSnapshotVhdSet (
     _In_ HANDLE VirtualDiskHandle,
     _In_ const PDELETE_SNAPSHOT_VHDSET_PARAMETERS Parameters,
     _In_ DELETE_SNAPSHOT_VHDSET_FLAG Flags
-    );
+    ) -> DWord;
 
-DWORD
+DWord
 WINAPI
 ModifyVhdSet (
     _In_ HANDLE VirtualDiskHandle,
     _In_ const PMODIFY_VHDSET_PARAMETERS Parameters,
     _In_ MODIFY_VHDSET_FLAG Flags
-    );
+    ) -> DWord;
 
-DWORD
+DWord
 WINAPI
 ApplySnapshotVhdSet (
     _In_ HANDLE VirtualDiskHandle,
     _In_ const PAPPLY_SNAPSHOT_VHDSET_PARAMETERS Parameters,
     _In_ APPLY_SNAPSHOT_VHDSET_FLAG Flags
-    );
+    ) -> DWord;
 
-DWORD
+DWord
 WINAPI
 RawSCSIVirtualDisk(
     _In_ HANDLE VirtualDiskHandle,
     _In_ const PRAW_SCSI_VIRTUAL_DISK_PARAMETERS Parameters,
     _In_ RAW_SCSI_VIRTUAL_DISK_FLAG Flags,
     _Out_ PRAW_SCSI_VIRTUAL_DISK_RESPONSE Response
-    );
+    ) -> DWord;
 
 
 #endif // NTDDI_VERSION >= NTDDI_WINTHRESHOLD
@@ -809,23 +738,23 @@ typedef enum _FORK_VIRTUAL_DISK_FLAG
 } FORK_VIRTUAL_DISK_FLAG;
 
 #ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(FORK_VIRTUAL_DISK_FLAG);
+DEFINE_ENUM_FLAG_OPERATORS(FORK_VIRTUAL_DISK_FLAG) -> DWord;
 #endif
 
-DWORD
+DWord
 WINAPI
 ForkVirtualDisk(
     _In_ HANDLE VirtualDiskHandle,
     _In_ FORK_VIRTUAL_DISK_FLAG Flags,
     _In_ const FORK_VIRTUAL_DISK_PARAMETERS* Parameters,
     _Inout_ LPOVERLAPPED Overlapped
-    );
+    ) -> DWord;
 
-DWORD
+DWord
 WINAPI
 CompleteForkVirtualDisk(
     _In_ HANDLE VirtualDiskHandle
-    );
+    ) -> DWord;
 
 }
 */
