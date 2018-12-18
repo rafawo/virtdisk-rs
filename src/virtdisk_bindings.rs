@@ -9,7 +9,7 @@ extern "C" {
         virtualStorageType: *const VirtualStorageType,
         path: PCWStr,
         virtualDiskAccessMask: VirtualDiskAccessMask,
-        flags: u64, // OpenVirtualDiskFlag
+        flags: u32, // OpenVirtualDiskFlag
         parameters: *const OpenVirtualDiskParameters,
         handle: Handle,
     ) -> DWord;
@@ -19,7 +19,7 @@ extern "C" {
         path: PCWStr,
         virtualDiskAccessMask: VirtualDiskAccessMask,
         securityDescriptor: *const SecurityDescriptor,
-        flags: u64, // CreateVirtualDiskFlag
+        flags: u32, // CreateVirtualDiskFlag
         providerSpecificFlags: u64,
         parameters: *const CreateVirtualDiskParameters,
         overlapped: *const Overlapped,
@@ -29,7 +29,7 @@ extern "C" {
     pub fn AttachVirtualDisk(
         virtualDiskHandle: Handle,
         securityDescriptor: *const SecurityDescriptor,
-        flags: u64, // AttachVirtualDiskFlag
+        flags: u32, // AttachVirtualDiskFlag
         providerSpecificFlags: u64,
         parameters: *const AttachVirtualDiskParameters,
         overlapped: *const Overlapped,
@@ -37,7 +37,7 @@ extern "C" {
 
     pub fn DetachVirtualDisk(
         virtualDiskHandle: Handle,
-        flags: u64, // DetachVirtualDiskFlag
+        flags: u32, // DetachVirtualDiskFlag
         providerSpecificFlags: u64,
     ) -> DWord;
 
@@ -54,7 +54,7 @@ extern "C" {
 
     pub fn GetStorageDependencyInformation(
         objectHandle: Handle,
-        flags: u64, // GetStorageDependencyFlag
+        flags: u32, // GetStorageDependencyFlag
         storageDependencyInfoSize: u64,
         storageDependencyInfo: *const StorageDependencyInfo,
         sizeUsed: *const u64

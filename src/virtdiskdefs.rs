@@ -412,7 +412,7 @@ pub enum StorageDependencyInfoVersion {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct StorageDependencyInfoVersion1 {
-    pub dependency_type_flags: u64, // DependentDiskFlag
+    pub dependency_type_flags: u32, // DependentDiskFlag
     pub provider_specific_flags: u64,
     pub virtual_storage_type: VirtualStorageType,
 }
@@ -420,7 +420,7 @@ pub struct StorageDependencyInfoVersion1 {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct StorageDependencyInfoVersion2 {
-    pub dependency_type_flags: u64, // DependentDiskFlag
+    pub dependency_type_flags: u32, // DependentDiskFlag
     pub provider_specific_flags: u64,
     pub virtual_storage_type: VirtualStorageType,
     pub ancestor_level: u64,
