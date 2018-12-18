@@ -27,4 +27,49 @@ pub mod windefs {
         pub data3: libc::c_ushort,
         pub data4: [libc::c_uchar; 8],
     }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Acl {
+        pub acl_revision: Byte,
+        pub sbz1: Byte,
+        pub acl_size: Word,
+        pub ace_count: Word,
+        pub sbz2: Word,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct SecurityDescriptor {
+        pub revision: Byte,
+        pub sbz1: Byte,
+        pub control: SecurityDescriptorControl,
+        pub owner: PSId,
+        pub group: PSId,
+        pub sacl: *mut Acl,
+        pub dacl: *mut Acl,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct OverlappedPointerDetails {
+        pub offset: DWord,
+        pub offset_high: DWord,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union OverlappedPointer {
+        pub details: OverlappedPointerDetails,
+        pub pointer: *mut Void,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Overlapped {
+        pub internal: *mut u64,
+        pub internal_high: *mut u64,
+        pub pointer: OverlappedPointer,
+        pub h_event: Handle,
+    }
 }

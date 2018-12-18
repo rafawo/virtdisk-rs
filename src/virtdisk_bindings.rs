@@ -5,318 +5,54 @@ use crate::windefs::*;
 
 #[link(name = "virtdisk")]
 extern "C" {
+    pub fn OpenVirtualDisk(
+        virtualStorageType: *const VirtualStorageType,
+        path: PCWStr,
+        virtualDiskAccessMask: VirtualDiskAccessMask,
+        flags: u64, // OpenVirtualDiskFlag
+        parameters: *const OpenVirtualDiskParameters,
+        handle: Handle,
+    ) -> DWord;
 
-pub fn OpenVirtualDisk(
-    virtualStorageType: VirtualStorageType,
-    path: PCWStr,
-    virtualDiskAccessMask: VirtualDiskAccessMask,
-    flags: OpenVirtualDiskFlag,
-    parameters: *mut OpenVirtualDiskParameters,
-    handle: *mut Void,
-) -> DWord;
+    pub fn CreateVirtualDisk(
+        virtualStorageType: *const VirtualStorageType,
+        path: PCWStr,
+        virtualDiskAccessMask: VirtualDiskAccessMask,
+        securityDescriptor: *const SecurityDescriptor,
+        flags: u64, // CreateVirtualDiskFlag
+        providerSpecificFlags: u64,
+        parameters: *const CreateVirtualDiskParameters,
+        overlapped: *const Overlapped,
+        handle: Handle,
+    ) -> DWord;
 
+    pub fn AttachVirtualDisk(
+        virtualDiskHandle: Handle,
+        securityDescriptor: *const SecurityDescriptor,
+        flags: u64, // AttachVirtualDiskFlag
+        providerSpecificFlags: u64,
+        parameters: *const AttachVirtualDiskParameters,
+        overlapped: *const Overlapped,
+    ) -> DWord;
+
+    pub fn DetachVirtualDisk(
+        virtualDiskHandle: Handle,
+        flags: u64, // DetachVirtualDiskFlag
+        providerSpecificFlags: u64,
+    ) -> DWord;
+
+    pub fn GetVirtualDiskPhysicalPath(
+        virtualDiskHandle: Handle,
+        diskPathSizeInBytes: *mut u64,
+        diskPath: PWStr,
+    ) -> DWord;
+
+    pub fn GetAllAttachedVirtualDiskPhysicalPaths(
+        pathsBufferSizeInBytes: *const u64,
+        pathsBuffer: PWStr,
+    ) -> DWord;
 }
-
 /*
-
-// Version definitions
-typedef enum _CREATE_VIRTUAL_DISK_VERSION
-{
-    CREATE_VIRTUAL_DISK_VERSION_UNSPECIFIED = 0,
-    CREATE_VIRTUAL_DISK_VERSION_1           = 1,
-    CREATE_VIRTUAL_DISK_VERSION_2           = 2,
-    CREATE_VIRTUAL_DISK_VERSION_3           = 3,
-    CREATE_VIRTUAL_DISK_VERSION_4           = 4,
-} CREATE_VIRTUAL_DISK_VERSION;
-
-// Versioned CreateVirtualDisk parameter structure
-typedef struct _CREATE_VIRTUAL_DISK_PARAMETERS
-{
-    CREATE_VIRTUAL_DISK_VERSION Version;
-
-    union
-    {
-        struct
-        {
-            GUID                  UniqueId;
-            ULONGLONG             MaximumSize;
-            ULONG                 BlockSizeInBytes;
-            ULONG                 SectorSizeInBytes;
-            PCWSTR                ParentPath;
-            PCWSTR                SourcePath;
-        } Version1;
-
-        struct
-        {
-            GUID                   UniqueId;
-            ULONGLONG              MaximumSize;
-            ULONG                  BlockSizeInBytes;
-            ULONG                  SectorSizeInBytes;
-            ULONG                  PhysicalSectorSizeInBytes;
-            PCWSTR                 ParentPath;
-            PCWSTR                 SourcePath;
-            OPEN_VIRTUAL_DISK_FLAG OpenFlags;
-            VIRTUAL_STORAGE_TYPE   ParentVirtualStorageType;
-            VIRTUAL_STORAGE_TYPE   SourceVirtualStorageType;
-            GUID                   ResiliencyGuid;
-        } Version2;
-
-        struct
-        {
-            GUID                   UniqueId;
-            ULONGLONG              MaximumSize;
-            ULONG                  BlockSizeInBytes;
-            ULONG                  SectorSizeInBytes;
-            ULONG                  PhysicalSectorSizeInBytes;
-            PCWSTR                 ParentPath;
-            PCWSTR                 SourcePath;
-            OPEN_VIRTUAL_DISK_FLAG OpenFlags;
-            VIRTUAL_STORAGE_TYPE   ParentVirtualStorageType;
-            VIRTUAL_STORAGE_TYPE   SourceVirtualStorageType;
-            GUID                   ResiliencyGuid;
-            PCWSTR                 SourceLimitPath;
-            VIRTUAL_STORAGE_TYPE   BackingStorageType;
-        } Version3;
-
-        struct
-        {
-            GUID                   UniqueId;
-            ULONGLONG              MaximumSize;
-            ULONG                  BlockSizeInBytes;
-            ULONG                  SectorSizeInBytes;
-            ULONG                  PhysicalSectorSizeInBytes;
-            PCWSTR                 ParentPath;
-            PCWSTR                 SourcePath;
-            OPEN_VIRTUAL_DISK_FLAG OpenFlags;
-            VIRTUAL_STORAGE_TYPE   ParentVirtualStorageType;
-            VIRTUAL_STORAGE_TYPE   SourceVirtualStorageType;
-            GUID                   ResiliencyGuid;
-            PCWSTR                 SourceLimitPath;
-            VIRTUAL_STORAGE_TYPE   BackingStorageType;
-            GUID                   PmemAddressAbstractionType;
-            ULONGLONG              DataAlignment;
-        } Version4;
-    };
-} CREATE_VIRTUAL_DISK_PARAMETERS, *PCREATE_VIRTUAL_DISK_PARAMETERS;
-
-
-// Flags for CreateVirtualDisk
-typedef enum _CREATE_VIRTUAL_DISK_FLAG
-{
-    CREATE_VIRTUAL_DISK_FLAG_NONE                          = 0x0,
-
-    // Pre-allocate all physical space necessary for the virtual
-    // size of the disk (e.g. a fixed VHD).
-    CREATE_VIRTUAL_DISK_FLAG_FULL_PHYSICAL_ALLOCATION      = 0x1,
-
-    // Take ownership of the source disk during create from source disk, to
-    // insure the source disk does not change during the create operation.  The
-    // source disk must also already be offline or read-only (or both).
-    // Ownership is released when create is done.  This also has a side-effect
-    // of disallowing concurrent create from same source disk.  Create will fail
-    // if ownership cannot be obtained or if the source disk is not already
-    // offline or read-only.  This flag is optional, but highly recommended for
-    // creates from source disk.  No effect for other types of create (no effect
-    // for create from source VHD; no effect for create without SourcePath).
-    CREATE_VIRTUAL_DISK_FLAG_PREVENT_WRITES_TO_SOURCE_DISK = 0x2,
-
-    // Do not copy initial virtual disk metadata or block states from the
-    // parent VHD; this is useful if the parent VHD is a stand-in file and the
-    // real parent will be explicitly set later.
-    CREATE_VIRTUAL_DISK_FLAG_DO_NOT_COPY_METADATA_FROM_PARENT = 0x4,
-
-    // Create the backing storage disk.
-    CREATE_VIRTUAL_DISK_FLAG_CREATE_BACKING_STORAGE = 0x8,
-
-    // If set, the SourceLimitPath is an change tracking ID, and all data that has changed
-    // since that change tracking ID will be copied from the source. If clear, the
-    // SourceLimitPath is a VHD file path in the source VHD's chain, and
-    // all data that is present in the children of that VHD in the chain
-    // will be copied from the source.
-    CREATE_VIRTUAL_DISK_FLAG_USE_CHANGE_TRACKING_SOURCE_LIMIT = 0x10,
-
-    // If set and the parent VHD has change tracking enabled, the child will
-    // have change tracking enabled and will recognize all change tracking
-    // IDs that currently exist in the parent. If clear or if the parent VHD
-    // does not have change tracking available, then change tracking will
-    // not be enabled in the new VHD.
-    CREATE_VIRTUAL_DISK_FLAG_PRESERVE_PARENT_CHANGE_TRACKING_STATE = 0x20,
-
-    // When creating a VHD Set from source, don't copy the data in the original
-    // backing store, but intsead use the file as is. If this flag is not specified
-    // and a source file is passed to CreateVirtualDisk for a VHDSet file, the data
-    // in the source file is copied. If this flag is set the data is moved. The
-    // name of the file may change.
-    CREATE_VIRTUAL_DISK_FLAG_VHD_SET_USE_ORIGINAL_BACKING_STORAGE = 0x40,
-
-    //
-    // When creating a fixed virtual disk, take advantage of an underlying sparse file.
-    // Only supported on file systems that support sparse VDLs.
-    //
-    CREATE_VIRTUAL_DISK_FLAG_SPARSE_FILE = 0x80,
-
-    //
-    // Creates a VHD suitable as the backing store for a virtual persistent memory device.
-    //
-    CREATE_VIRTUAL_DISK_FLAG_PMEM_COMPATIBLE = 0x100,
-
-} CREATE_VIRTUAL_DISK_FLAG;
-
-#define CREATE_VIRTUAL_DISK_FLAG_USE_RCT_SOURCE_LIMIT CREATE_VIRTUAL_DISK_FLAG_USE_CHANGE_TRACKING_SOURCE_LIMIT
-
-#ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(CREATE_VIRTUAL_DISK_FLAG);
-#endif
-
-
-DWORD
-WINAPI
-CreateVirtualDisk(
-    _In_      PVIRTUAL_STORAGE_TYPE           VirtualStorageType,
-    _In_      PCWSTR                          Path,
-    _In_      VIRTUAL_DISK_ACCESS_MASK        VirtualDiskAccessMask,
-    _In_opt_  PSECURITY_DESCRIPTOR            SecurityDescriptor,
-    _In_      CREATE_VIRTUAL_DISK_FLAG        Flags,
-    _In_      ULONG                           ProviderSpecificFlags,
-    _In_      PCREATE_VIRTUAL_DISK_PARAMETERS Parameters,
-    _In_opt_  LPOVERLAPPED                    Overlapped,
-    _Out_     PHANDLE                         Handle
-    );
-
-
-
-//
-// AttachVirtualDisk
-//
-
-// Version definitions
-typedef enum _ATTACH_VIRTUAL_DISK_VERSION
-{
-    ATTACH_VIRTUAL_DISK_VERSION_UNSPECIFIED = 0,
-    ATTACH_VIRTUAL_DISK_VERSION_1           = 1,
-
-} ATTACH_VIRTUAL_DISK_VERSION;
-
-// Versioned parameter structure for AttachVirtualDisk
-typedef struct _ATTACH_VIRTUAL_DISK_PARAMETERS
-{
-    ATTACH_VIRTUAL_DISK_VERSION Version;
-
-    union
-    {
-        struct
-        {
-            ULONG Reserved;
-        } Version1;
-    };
-} ATTACH_VIRTUAL_DISK_PARAMETERS, *PATTACH_VIRTUAL_DISK_PARAMETERS;
-
-#endif // VIRTDISK_DEFINE_FLAGS
-
-// Flags for AttachVirtualDisk
-typedef enum _ATTACH_VIRTUAL_DISK_FLAG
-{
-    ATTACH_VIRTUAL_DISK_FLAG_NONE                           = 0x00000000,
-
-    // Attach the disk as read only
-    ATTACH_VIRTUAL_DISK_FLAG_READ_ONLY                      = 0x00000001,
-
-    // Will cause all volumes on the disk to be mounted
-    // without drive letters.
-    ATTACH_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER                = 0x00000002,
-
-    // Will decouple the disk lifetime from that of the VirtualDiskHandle.
-    // The disk will be attached until an explicit call is made to
-    // DetachVirtualDisk, even if all handles are closed.
-    ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME             = 0x00000004,
-
-    // Indicates that the drive will not be attached to
-    // the local system (but rather to a VM).
-    ATTACH_VIRTUAL_DISK_FLAG_NO_LOCAL_HOST                  = 0x00000008,
-
-    // Do not assign a custom security descriptor to the disk; use the
-    // system default.
-    ATTACH_VIRTUAL_DISK_FLAG_NO_SECURITY_DESCRIPTOR         = 0x00000010,
-
-    // Default volume encryption policies should not be applied to the
-    // disk when attached to the local system.
-    ATTACH_VIRTUAL_DISK_FLAG_BYPASS_DEFAULT_ENCRYPTION_POLICY = 0x00000020,
-
-} ATTACH_VIRTUAL_DISK_FLAG;
-
-#if !defined(VIRTDISK_DEFINE_FLAGS)
-
-#ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(ATTACH_VIRTUAL_DISK_FLAG);
-#endif
-
-DWORD
-WINAPI
-AttachVirtualDisk(
-    _In_     HANDLE                             VirtualDiskHandle,
-    _In_opt_ PSECURITY_DESCRIPTOR               SecurityDescriptor,
-    _In_     ATTACH_VIRTUAL_DISK_FLAG           Flags,
-    _In_     ULONG                              ProviderSpecificFlags,
-    _In_opt_ PATTACH_VIRTUAL_DISK_PARAMETERS    Parameters,
-    _In_opt_ LPOVERLAPPED                       Overlapped
-    );
-
-
-
-//
-// DetachVirtualDisk
-//
-
-#endif // VIRTDISK_DEFINE_FLAGS
-
-// Flags for DetachVirtualDisk
-typedef enum _DETACH_VIRTUAL_DISK_FLAG
-{
-    DETACH_VIRTUAL_DISK_FLAG_NONE                = 0x00000000,
-
-} DETACH_VIRTUAL_DISK_FLAG;
-
-#if !defined(VIRTDISK_DEFINE_FLAGS)
-
-#ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(DETACH_VIRTUAL_DISK_FLAG);
-#endif
-
-DWORD
-WINAPI
-DetachVirtualDisk(
-    _In_     HANDLE                   VirtualDiskHandle,
-    _In_     DETACH_VIRTUAL_DISK_FLAG Flags,
-    _In_     ULONG                    ProviderSpecificFlags
-    );
-
-
-
-//
-// GetVirtualDiskPhysicalPath
-//
-
-DWORD
-WINAPI
-GetVirtualDiskPhysicalPath(
-    _In_                                     HANDLE VirtualDiskHandle,
-    _Inout_                                  PULONG DiskPathSizeInBytes,
-    _Out_writes_bytes_(*DiskPathSizeInBytes) PWSTR  DiskPath
-    );
-
-//
-// GetAllAttachedVirtualDiskPhysicalPaths
-//
-
-DWORD
-WINAPI
-GetAllAttachedVirtualDiskPhysicalPaths(
-    _Inout_                                     PULONG PathsBufferSizeInBytes,
-    _Out_writes_bytes_(*PathsBufferSizeInBytes)       PWSTR  PathsBuffer
-    );
-
-#endif // VIRTDISK_DEFINE_FLAGS
-
 //
 // GetStorageDependencyInformation
 //
@@ -1322,88 +1058,5 @@ CompleteForkVirtualDisk(
     _In_ HANDLE VirtualDiskHandle
     );
 
-#endif // NTDDI_VERSION >= NTDDI_WIN10_RS5
-
-#endif // VIRTDISK_DEFINE_FLAGS
-
-//
-//  The Surface and Unsurface API names are deprecated.  Use Attach/Detach versions
-//  instead.  If you use any of these defines below your code will break post Win7.
-//
-
-#define SurfaceVirtualDisk                           AttachVirtualDisk
-#define UnsurfaceVirtualDisk                         DetachVirtualDisk
-#define VIRTUAL_DISK_ACCESS_SURFACE_RO               VIRTUAL_DISK_ACCESS_ATTACH_RO
-#define VIRTUAL_DISK_ACCESS_SURFACE_RW               VIRTUAL_DISK_ACCESS_ATTACH_RW
-#define VIRTUAL_DISK_ACCESS_UNSURFACE                VIRTUAL_DISK_ACCESS_DETACH
-#define SURFACE_VIRTUAL_DISK_VERSION_UNSPECIFIED     ATTACH_VIRTUAL_DISK_VERSION_UNSPECIFIED
-#define SURFACE_VIRTUAL_DISK_VERSION_1               ATTACH_VIRTUAL_DISK_VERSION_1
-#define SURFACE_VIRTUAL_DISK_VERSION                 ATTACH_VIRTUAL_DISK_VERSION
-#define _SURFACE_VIRTUAL_DISK_VERSION                _ATTACH_VIRTUAL_DISK_VERSION
-#define SURFACE_VIRTUAL_DISK_PARAMETERS              ATTACH_VIRTUAL_DISK_PARAMETERS
-#define PSURFACE_VIRTUAL_DISK_PARAMETERS             PATTACH_VIRTUAL_DISK_PARAMETERS
-#define _SURFACE_VIRTUAL_DISK_PARAMETERS             _ATTACH_VIRTUAL_DISK_PARAMETERS
-
-#if !defined(__midl)
-
-#define _SURFACE_VIRTUAL_DISK_FLAG                                  _ATTACH_VIRTUAL_DISK_FLAG
-#define SURFACE_VIRTUAL_DISK_FLAG_NONE                              ATTACH_VIRTUAL_DISK_FLAG_NONE
-#define SURFACE_VIRTUAL_DISK_FLAG_READ_ONLY                         ATTACH_VIRTUAL_DISK_FLAG_READ_ONLY
-#define SURFACE_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER                   ATTACH_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER
-#define SURFACE_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME                ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME
-#define SURFACE_VIRTUAL_DISK_FLAG_NO_LOCAL_HOST                     ATTACH_VIRTUAL_DISK_FLAG_NO_LOCAL_HOST
-#define SURFACE_VIRTUAL_DISK_FLAG_NO_SECURITY_DESCRIPTOR            ATTACH_VIRTUAL_DISK_FLAG_NO_SECURITY_DESCRIPTOR
-#define SURFACE_VIRTUAL_DISK_FLAG_BYPASS_DEFAULT_ENCRYPTION_POLICY  ATTACH_VIRTUAL_DISK_FLAG_BYPASS_DEFAULT_ENCRYPTION_POLICY
-#define SURFACE_VIRTUAL_DISK_FLAG                                   ATTACH_VIRTUAL_DISK_FLAG
-#define _UNSURFACE_VIRTUAL_DISK_FLAG                                _DETACH_VIRTUAL_DISK_FLAG
-#define UNSURFACE_VIRTUAL_DISK_FLAG_NONE                            DETACH_VIRTUAL_DISK_FLAG_NONE
-#define UNSURFACE_VIRTUAL_DISK_FLAG                                 DETACH_VIRTUAL_DISK_FLAG
-
-#else
-
-typedef enum _SURFACE_VIRTUAL_DISK_FLAG
-{
-    SURFACE_VIRTUAL_DISK_FLAG_NONE                          = 0x00000000,
-    SURFACE_VIRTUAL_DISK_FLAG_READ_ONLY                     = 0x00000001,
-    SURFACE_VIRTUAL_DISK_FLAG_NO_DRIVE_LETTER               = 0x00000002,
-    SURFACE_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME            = 0x00000004,
-    SURFACE_VIRTUAL_DISK_FLAG_NO_LOCAL_HOST                 = 0x00000008,
-    SURFACE_VIRTUAL_DISK_FLAG_NO_SECURITY_DESCRIPTOR        = 0x00000010,
-} SURFACE_VIRTUAL_DISK_FLAG;
-
-typedef enum _UNSURFACE_VIRTUAL_DISK_FLAG
-{
-    UNSURFACE_VIRTUAL_DISK_FLAG_NONE                = 0x00000000,
-} UNSURFACE_VIRTUAL_DISK_FLAG;
-
-#if !defined(VIRTDISK_DEFINE_FLAGS)
-
-#ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(SURFACE_VIRTUAL_DISK_FLAG);
-#endif
-#ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(UNSURFACE_VIRTUAL_DISK_FLAG);
-#endif
-#endif
-
-#endif
-
-//  End deprecated APIs
-
-#ifdef __cplusplus
 }
-#endif
-
-#if _MSC_VER >= 1200
-#pragma warning(pop)
-#endif
-
-#endif // WIN32_WINNT_WIN7
-
-#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP | WINAPI_PARTITION_PKG_VHD) */
-#pragma endregion
-
-#endif // VIRT_DISK_API_DEF
-
-// VirtDisk.h EOF
 */

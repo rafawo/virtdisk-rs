@@ -5,8 +5,8 @@ use crate::windefs::*;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct VirtualStorageType {
-    device_id: u64,
-    vendor_id: Guid,
+    pub device_id: u64,
+    pub vendor_id: Guid,
 }
 
 /// {00000000-0000-0000-0000-000000000000}
@@ -46,39 +46,39 @@ pub enum OpenVirtualDiskVersion {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct OpenVirtualDiskVersion1 {
-    rw_depth: u64,
+    pub rw_depth: u64,
 }
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct OpenVirtualDiskVersion2 {
-    get_info_only: bool,
-    read_only: bool,
-    resiliency_guid: Guid,
+    pub get_info_only: bool,
+    pub read_only: bool,
+    pub resiliency_guid: Guid,
 }
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct OpenVirtualDiskVersion3 {
-    get_info_only: bool,
-    read_only: bool,
-    resiliency_guid: Guid,
-    snapshot_id: Guid,
+    pub get_info_only: bool,
+    pub read_only: bool,
+    pub resiliency_guid: Guid,
+    pub snapshot_id: Guid,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union OpenVirtualDiskVersionDetails {
-    version1: OpenVirtualDiskVersion1,
-    version2: OpenVirtualDiskVersion2,
-    version3: OpenVirtualDiskVersion3,
+    pub version1: OpenVirtualDiskVersion1,
+    pub version2: OpenVirtualDiskVersion2,
+    pub version3: OpenVirtualDiskVersion3,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct OpenVirtualDiskParameters {
-    version: OpenVirtualDiskVersion,
-    version_details: OpenVirtualDiskVersionDetails,
+    pub version: OpenVirtualDiskVersion,
+    pub version_details: OpenVirtualDiskVersionDetails,
 }
 
 /// Access Mask for OpenVirtualDisk and CreateVirtualDisk.  The virtual
@@ -167,22 +167,199 @@ pub enum CreateVirtualDiskVersion {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CreateVirtualDiskVersion1 {
-    unique_id: Guid,
-    maximum_size: u64,
-    block_size_in_bytes: u64,
-    sector_size_in_bytes: u64,
-    parent_path: PCWStr,
-    source_path: PCWStr,
+    pub unique_id: Guid,
+    pub maximum_size: u64,
+    pub block_size_in_bytes: u64,
+    pub sector_size_in_bytes: u64,
+    pub parent_path: PCWStr,
+    pub source_path: PCWStr,
 }
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CreateVirtualDiskVersion2 {
-    unique_id: Guid,
-    maximum_size: u64,
-    block_size_in_bytes: u64,
-    sector_size_in_bytes: u64,
-    parent_path: PCWStr,
-    source_path: PCWStr,
-    open_flags: OpenVirtualDiskFlag,
+    pub unique_id: Guid,
+    pub maximum_size: u64,
+    pub block_size_in_bytes: u64,
+    pub sector_size_in_bytes: u64,
+    pub parent_path: PCWStr,
+    pub source_path: PCWStr,
+    pub open_flags: u32, // OpenVirtualDiskFlag
+    pub parent_virtual_storage_type: VirtualStorageType,
+    pub source_virtual_storage_type: VirtualStorageType,
+    pub resiliency_guid: Guid,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CreateVirtualDiskVersion3 {
+    pub unique_id: Guid,
+    pub maximum_size: u64,
+    pub block_size_in_bytes: u64,
+    pub sector_size_in_bytes: u64,
+    pub parent_path: PCWStr,
+    pub source_path: PCWStr,
+    pub open_flags: u32, // OpenVirtualDiskFlag
+    pub parent_virtual_storage_type: VirtualStorageType,
+    pub source_virtual_storage_type: VirtualStorageType,
+    pub resiliency_guid: Guid,
+    pub source_limit_path: PCWStr,
+    pub backing_storage_type: VirtualStorageType,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CreateVirtualDiskVersion4 {
+    pub unique_id: Guid,
+    pub maximum_size: u64,
+    pub block_size_in_bytes: u64,
+    pub sector_size_in_bytes: u64,
+    pub parent_path: PCWStr,
+    pub source_path: PCWStr,
+    pub open_flags: u32, // OpenVirtualDiskFlag
+    pub parent_virtual_storage_type: VirtualStorageType,
+    pub source_virtual_storage_type: VirtualStorageType,
+    pub resiliency_guid: Guid,
+    pub source_limit_path: PCWStr,
+    pub backing_storage_type: VirtualStorageType,
+    pub pmem_address_abstraction_type: Guid,
+    pub data_alignment: u64,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union CreateVirtualDiskVersionDetails {
+    pub version1: CreateVirtualDiskVersion1,
+    pub version2: CreateVirtualDiskVersion2,
+    pub version3: CreateVirtualDiskVersion3,
+    pub version4: CreateVirtualDiskVersion4,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct CreateVirtualDiskParameters {
+    pub version: CreateVirtualDiskVersion,
+    pub version_details: CreateVirtualDiskVersionDetails,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum CreateVirtualDiskFlag {
+    None = 0x0,
+
+    /// Pre-allocate all physical space necessary for the virtual
+    /// size of the disk (e.g. a fixed VHD).
+    FullPhysicalAllocation = 0x1,
+
+    /// Take ownership of the source disk during create from source disk, to
+    /// insure the source disk does not change during the create operation.  The
+    /// source disk must also already be offline or read-only (or both).
+    /// Ownership is released when create is done.  This also has a side-effect
+    /// of disallowing concurrent create from same source disk.  Create will fail
+    /// if ownership cannot be obtained or if the source disk is not already
+    /// offline or read-only.  This flag is optional, but highly recommended for
+    /// creates from source disk.  No effect for other types of create (no effect
+    /// for create from source VHD; no effect for create without SourcePath).
+    PreventWritesToSourceDisk = 0x2,
+
+    /// Do not copy initial virtual disk metadata or block states from the
+    /// parent VHD; this is useful if the parent VHD is a stand-in file and the
+    /// real parent will be explicitly set later.
+    DoNotCopyMetadataFromParent = 0x4,
+
+    /// Create the backing storage disk.
+    CreateBackingStore = 0x8,
+
+    /// If set, the SourceLimitPath is an change tracking ID, and all data that has changed
+    /// since that change tracking ID will be copied from the source. If clear, the
+    /// SourceLimitPath is a VHD file path in the source VHD's chain, and
+    /// all data that is present in the children of that VHD in the chain
+    /// will be copied from the source.
+    UseChangeTrackingSourceLimit = 0x10,
+
+    /// If set and the parent VHD has change tracking enabled, the child will
+    /// have change tracking enabled and will recognize all change tracking
+    /// IDs that currently exist in the parent. If clear or if the parent VHD
+    /// does not have change tracking available, then change tracking will
+    /// not be enabled in the new VHD.
+    PreserveParentChangeTrackingState = 0x20,
+
+    /// When creating a VHD Set from source, don't copy the data in the original
+    /// backing store, but intsead use the file as is. If this flag is not specified
+    /// and a source file is passed to CreateVirtualDisk for a VHDSet file, the data
+    /// in the source file is copied. If this flag is set the data is moved. The
+    /// name of the file may change.
+    VhdSetUseOriginalBackingStorage = 0x40,
+
+    /// When creating a fixed virtual disk, take advantage of an underlying sparse file.
+    /// Only supported on file systems that support sparse VDLs.
+    SparseFile = 0x80,
+
+    /// Creates a VHD suitable as the backing store for a virtual persistent memory device.
+    PmemCompatible = 0x100,
+}
+
+pub const CREATE_VIRTUAL_DISK_FLAG_USE_RCT_SOURCE_LIMIT: u32 = CreateVirtualDiskFlag::UseChangeTrackingSourceLimit as u32;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum AttachVirtualDiskVersion {
+    Unspecified = 0,
+    Version1 = 1,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct AttachVirtualDiskVersion1 {
+    pub reserved: u64,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union AttachVirtualDiskVersionDetails {
+    pub version1: AttachVirtualDiskVersion1,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct AttachVirtualDiskParameters {
+    pub version: AttachVirtualDiskVersion,
+    pub version_details: AttachVirtualDiskVersionDetails,
+}
+
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum AttachVirtualDiskFlag {
+    None = 0x00000000,
+
+    /// Attach the disk as read only
+    ReadOnly = 0x00000001,
+
+    /// Will cause all volumes on the disk to be mounted
+    /// without drive letters.
+    NoDriveLetter = 0x00000002,
+
+    /// Will decouple the disk lifetime from that of the VirtualDiskHandle.
+    /// The disk will be attached until an explicit call is made to
+    /// DetachVirtualDisk, even if all handles are closed.
+    PermanentLifetime = 0x00000004,
+
+    /// Indicates that the drive will not be attached to
+    /// the local system (but rather to a VM).
+    NoLocalHost = 0x00000008,
+
+    /// Do not assign a custom security descriptor to the disk; use the
+    /// system default.
+    NoSecurityDescriptor = 0x00000010,
+
+    /// Default volume encryption policies should not be applied to the
+    /// disk when attached to the local system.
+    BypassDefaultEncryptionPolicy = 0x00000020,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum DetachVirtualDiskFlag {
+    None = 0x00000000,
 }
