@@ -9,8 +9,8 @@ extern "C" {
         virtualStorageType: *const VirtualStorageType,
         path: PCWStr,
         virtualDiskAccessMask: VirtualDiskAccessMask,
-        flags: u32, // OpenVirtualDiskFlag
-        parameters: *const OpenVirtualDiskParameters,
+        flags: u32, // open_virtual_disk::Flag
+        parameters: *const open_virtual_disk::Parameters,
         handle: Handle,
     ) -> DWord;
 
@@ -19,9 +19,9 @@ extern "C" {
         path: PCWStr,
         virtualDiskAccessMask: VirtualDiskAccessMask,
         securityDescriptor: *const SecurityDescriptor,
-        flags: u32, // CreateVirtualDiskFlag
+        flags: u32, // create_virtual_disk::Flag
         providerSpecificFlags: u64,
-        parameters: *const CreateVirtualDiskParameters,
+        parameters: *const create_virtual_disk::Parameters,
         overlapped: *const Overlapped,
         handle: Handle,
     ) -> DWord;
@@ -29,15 +29,15 @@ extern "C" {
     pub fn AttachVirtualDisk(
         virtualDiskHandle: Handle,
         securityDescriptor: *const SecurityDescriptor,
-        flags: u32, // AttachVirtualDiskFlag
+        flags: u32, // attach_virtual_disk::Flag
         providerSpecificFlags: u64,
-        parameters: *const AttachVirtualDiskParameters,
+        parameters: *const attach_virtual_disk::Parameters,
         overlapped: *const Overlapped,
     ) -> DWord;
 
     pub fn DetachVirtualDisk(
         virtualDiskHandle: Handle,
-        flags: u32, // DetachVirtualDiskFlag
+        flags: u32, // detach_virtual_disk::Flag
         providerSpecificFlags: u64,
     ) -> DWord;
 
@@ -54,22 +54,22 @@ extern "C" {
 
     pub fn GetStorageDependencyInformation(
         objectHandle: Handle,
-        flags: u32, // GetStorageDependencyFlag
+        flags: u32, // storage_dependency::GetFlag
         storageDependencyInfoSize: u64,
-        storageDependencyInfo: *const StorageDependencyInfo,
+        storageDependencyInfo: *const storage_dependency::Info,
         sizeUsed: *const u64
     ) -> DWord;
 
     pub fn GetVirtualDiskInformation(
         virtualDiskHandle: Handle,
         virtualDiskInfoSize: *const u64,
-        virtualDiskInfo: *mut GetVirtualDiskInfo,
+        virtualDiskInfo: *mut get_virtual_disk::Info,
         sizeUsed: *mut u64,
     ) -> DWord;
 
     pub fn SetVirtualDiskInformation(
         virtualDiskHandle: Handle,
-        virtualDiskInfo: *const SetVirtualDiskInfo,
+        virtualDiskInfo: *const set_virtual_disk::Info,
     ) -> DWord;
 
     pub fn EnumerateVirtualDiskMetadata(
