@@ -363,3 +363,98 @@ pub enum AttachVirtualDiskFlag {
 pub enum DetachVirtualDiskFlag {
     None = 0x00000000,
 }
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum DependentDiskFlag {
+    None = 0x00000000,
+
+    /// Multiple files backing the virtual storage device
+    MultipleBackingFiles = 0x00000001,
+
+    FullyAllocated = 0x00000002,
+    ReadOnly = 0x00000004,
+
+    /// Backing file of the virtual storage device is not local to the machine
+    Remote = 0x00000008,
+
+    /// Volume is the system volume
+    SystemVolume = 0x00000010,
+
+    /// Volume backing the virtual storage device file is the system volume
+    SystemVolumeParent = 0x00000020,
+
+    Removable = 0x00000040,
+
+    /// Drive letters are not assigned to the volumes
+    /// on the virtual disk automatically.
+    NoDriveLetter = 0x00000080,
+
+    Parent = 0x00000100,
+
+    /// Virtual disk is not attached on the local host
+    /// (instead attached on a guest VM for instance)
+    NoHostDisk = 0x00000200,
+
+    /// Indicates the lifetime of the disk is not tied
+    /// to any system handles
+    PermanentLifetime = 0x00000400,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum StorageDependencyInfoVersion {
+    Unspecified = 0,
+    Version1 = 1,
+    Version2 = 2,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct StorageDependencyInfoVersion1 {
+    pub dependency_type_flags: u64, // DependentDiskFlag
+    pub provider_specific_flags: u64,
+    pub virtual_storage_type: VirtualStorageType,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct StorageDependencyInfoVersion2 {
+    pub dependency_type_flags: u64, // DependentDiskFlag
+    pub provider_specific_flags: u64,
+    pub virtual_storage_type: VirtualStorageType,
+    pub ancestor_level: u64,
+    pub dependency_device_name: PWStr,
+    pub host_volume_name: PWStr,
+    pub dependent_volume_name: PWStr,
+    pub dependent_volume_relative_path: PWStr,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union StorageDependencyInfoVersionDetails {
+    pub version1: StorageDependencyInfoVersion1,
+    pub version2: StorageDependencyInfoVersion2,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct StorageDependencyInfo {
+    pub version: StorageDependencyInfoVersion,
+    pub number_entries: u64,
+    pub version_details: *mut StorageDependencyInfoVersionDetails,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum GetStorageDependencyFlag {
+    None = 0x00000000,
+
+    /// Return information for volumes or disks hosting the volume specified
+    /// If not set, returns info about volumes or disks being hosted by
+    /// the volume or disk specified
+    HostVolumes = 0x00000001,
+
+    /// The handle provided is to a disk, not volume or file
+    DiskHandle = 0x00000002,
+}

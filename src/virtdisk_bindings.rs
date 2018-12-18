@@ -51,152 +51,17 @@ extern "C" {
         pathsBufferSizeInBytes: *const u64,
         pathsBuffer: PWStr,
     ) -> DWord;
+
+    pub fn GetStorageDependencyInformation(
+        objectHandle: Handle,
+        flags: u64, // GetStorageDependencyFlag
+        storageDependencyInfoSize: u64,
+        storageDependencyInfo: *const StorageDependencyInfo,
+        sizeUsed: *const u64
+    ) -> DWord;
+
 }
 /*
-//
-// GetStorageDependencyInformation
-//
-
-// Flags for dependent disks
-typedef enum _DEPENDENT_DISK_FLAG
-{
-    DEPENDENT_DISK_FLAG_NONE                 = 0x00000000,
-
-    //
-    // Multiple files backing the virtual storage device
-    //
-    DEPENDENT_DISK_FLAG_MULT_BACKING_FILES   = 0x00000001,
-
-    DEPENDENT_DISK_FLAG_FULLY_ALLOCATED      = 0x00000002,
-
-    DEPENDENT_DISK_FLAG_READ_ONLY            = 0x00000004,
-
-    //
-    //Backing file of the virtual storage device is not local to the machine
-    //
-    DEPENDENT_DISK_FLAG_REMOTE               = 0x00000008,
-
-    //
-    // Volume is the system volume
-    //
-    DEPENDENT_DISK_FLAG_SYSTEM_VOLUME        = 0x00000010,
-
-    //
-    // Volume backing the virtual storage device file is the system volume
-    //
-    DEPENDENT_DISK_FLAG_SYSTEM_VOLUME_PARENT = 0x00000020,
-
-    DEPENDENT_DISK_FLAG_REMOVABLE            = 0x00000040,
-
-    //
-    // Drive letters are not assigned to the volumes
-    // on the virtual disk automatically.
-    //
-    DEPENDENT_DISK_FLAG_NO_DRIVE_LETTER      = 0x00000080,
-
-    DEPENDENT_DISK_FLAG_PARENT               = 0x00000100,
-
-    //
-    // Virtual disk is not attached on the local host
-    // (instead attached on a guest VM for instance)
-    //
-    DEPENDENT_DISK_FLAG_NO_HOST_DISK         = 0x00000200,
-
-    //
-    // Indicates the lifetime of the disk is not tied
-    // to any system handles
-    //
-    DEPENDENT_DISK_FLAG_PERMANENT_LIFETIME   = 0x00000400,
-
-} DEPENDENT_DISK_FLAG;
-
-#ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(DEPENDENT_DISK_FLAG);
-#endif
-
-#if !defined(VIRTDISK_DEFINE_FLAGS)
-
-// Version definitions
-typedef enum _STORAGE_DEPENDENCY_INFO_VERSION
-{
-    STORAGE_DEPENDENCY_INFO_VERSION_UNSPECIFIED = 0,
-    STORAGE_DEPENDENCY_INFO_VERSION_1           = 1,
-    STORAGE_DEPENDENCY_INFO_VERSION_2           = 2,
-
-} STORAGE_DEPENDENCY_INFO_VERSION;
-
-
-// Parameter structure for GetStorageDependencyInformation
-typedef struct _STORAGE_DEPENDENCY_INFO_TYPE_1
-{
-    DEPENDENT_DISK_FLAG   DependencyTypeFlags;
-    ULONG                 ProviderSpecificFlags;
-    VIRTUAL_STORAGE_TYPE  VirtualStorageType;
-} STORAGE_DEPENDENCY_INFO_TYPE_1, *PSTORAGE_DEPENDENCY_INFO_TYPE_1;
-
-
-// Parameter structure for GetStorageDependencyInformation
-typedef struct _STORAGE_DEPENDENCY_INFO_TYPE_2
-{
-    DEPENDENT_DISK_FLAG  DependencyTypeFlags;
-    ULONG                ProviderSpecificFlags;
-    VIRTUAL_STORAGE_TYPE VirtualStorageType;
-    ULONG                AncestorLevel;
-    PWSTR                DependencyDeviceName;
-    PWSTR                HostVolumeName;
-    PWSTR                DependentVolumeName;
-    PWSTR                DependentVolumeRelativePath;
-} STORAGE_DEPENDENCY_INFO_TYPE_2, *PSTORAGE_DEPENDENCY_INFO_TYPE_2;
-
-
-// Parameter structure for GetStorageDependencyInformation
-typedef struct _STORAGE_DEPENDENCY_INFO
-{
-    STORAGE_DEPENDENCY_INFO_VERSION Version;
-    ULONG NumberEntries;
-    union
-    {
-        STORAGE_DEPENDENCY_INFO_TYPE_1 Version1Entries[];
-        STORAGE_DEPENDENCY_INFO_TYPE_2 Version2Entries[];
-    };
-} STORAGE_DEPENDENCY_INFO, *PSTORAGE_DEPENDENCY_INFO;
-
-#endif // VIRTDISK_DEFINE_FLAGS
-
-// Flags for GetStorageDependencyInformation
-typedef enum _GET_STORAGE_DEPENDENCY_FLAG
-{
-    GET_STORAGE_DEPENDENCY_FLAG_NONE         = 0x00000000,
-
-    // Return information for volumes or disks hosting the volume specified
-    // If not set, returns info about volumes or disks being hosted by
-    // the volume or disk specified
-    GET_STORAGE_DEPENDENCY_FLAG_HOST_VOLUMES = 0x00000001,
-
-    //  The handle provided is to a disk, not volume or file
-    GET_STORAGE_DEPENDENCY_FLAG_DISK_HANDLE  = 0x00000002,
-
-} GET_STORAGE_DEPENDENCY_FLAG;
-
-#define GET_STORAGE_DEPENDENCY_FLAG_PARENTS GET_STORAGE_DEPENDENCY_FLAG_HOST_VOLUMES
-
-#ifdef DEFINE_ENUM_FLAG_OPERATORS
-DEFINE_ENUM_FLAG_OPERATORS(GET_STORAGE_DEPENDENCY_FLAG);
-#endif
-
-#if !defined(VIRTDISK_DEFINE_FLAGS)
-
-DWORD
-WINAPI
-GetStorageDependencyInformation(
-    _In_        HANDLE                      ObjectHandle,
-    _In_        GET_STORAGE_DEPENDENCY_FLAG Flags,
-    _In_        ULONG                       StorageDependencyInfoSize,
-    _Inout_     PSTORAGE_DEPENDENCY_INFO    StorageDependencyInfo,
-    _Inout_opt_ PULONG                      SizeUsed
-    );
-
-
 
 //
 // GetVirtualDiskInformation
