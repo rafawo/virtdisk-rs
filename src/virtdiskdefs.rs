@@ -31,9 +31,6 @@ pub const VIRTUAL_STORAGE_TYPE_DEVICE_VHD: u32 = 2;
 pub const VIRTUAL_STORAGE_TYPE_DEVICE_VHDX: u32 = 3;
 pub const VIRTUAL_STORAGE_TYPE_DEVICE_VHDSET: u32 = 4;
 
-/// The default RW Depth parameter value
-pub const OPEN_VIRTUAL_DISK_RW_DEPTH_DEFAULT: u32 = 1;
-
 /// Access Mask for OpenVirtualDisk and CreateVirtualDisk. The virtual
 /// disk drivers expose file objects as handles therefore we map
 /// it into that AccessMask space.
@@ -157,6 +154,9 @@ pub mod open_virtual_disk {
 
     /// Default logical sector size is 512B
     pub const PARAMETERS_DEFAULT_SECTOR_SIZE: u32 = 0;
+
+    /// The default RW Depth parameter value
+    pub const RW_DEPTH_DEFAULT: u32 = 1;
 }
 
 pub mod create_virtual_disk {
