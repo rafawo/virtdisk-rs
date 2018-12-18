@@ -614,3 +614,478 @@ pub mod set_virtual_disk {
         pub version_details: InfoVersionDetails,
     }
 }
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct VirtualDiskProgress {
+    pub operation_status: DWord,
+    pub current_value: u64,
+    pub completion_value: u64,
+}
+
+pub mod compact_virtual_disk {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub reserved: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+        NoZeroScan = 0x00000001,
+        NoBlockMoves = 0x00000002,
+    }
+}
+
+pub mod merge_virtual_disk {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+        Version2 = 2,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub merge_depth: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version2 {
+        pub merge_source_path: u64,
+        pub merge_target_path: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+        pub version2: Version2,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+    }
+}
+
+pub mod expand_virtual_disk {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub new_size: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+    }
+}
+
+pub mod resize_virtual_disk {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub new_size: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x0,
+
+        /// If this flag is set, skip checking the virtual disk's partition table
+        /// to ensure that this truncation is safe. Setting this flag can cause
+        /// unrecoverable data loss; use with care.
+        AllowUnsafeVirtualSize = 0x1,
+
+        /// If this flag is set, resize the disk to the smallest virtual size
+        /// possible without truncating past any existing partitions. If this
+        /// is set, NewSize in RESIZE_VIRTUAL_DISK_PARAMETERS must be zero.
+        ResizeToSmallestSafeVirtualSize = 0x2,
+    }
+}
+
+pub mod mirror_virtual_disk {
+    use crate::windefs::*;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub mirror_virtual_disk_path: PCWStr,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+        ExistingFile = 0x00000001,
+        SkipMirrorActivation = 0x00000002,
+    }
+}
+
+pub mod query_changes_virtual_disk {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Range {
+        pub byte_offset: u64,
+        pub byte_length: u64,
+        pub reserved: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+    }
+}
+
+pub mod take_snapshot_vhdset {
+    use crate::windefs::*;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub snapshot_id: Guid,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+        Writable = 0x00000001,
+    }
+}
+
+pub mod delete_snapshot_vhdset {
+    use crate::windefs::*;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub snapshot_id: Guid,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+        PersistRct = 0x00000001,
+    }
+}
+
+pub mod modify_vhdset {
+    use crate::windefs::*;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        SnapshotPath = 1,
+        RemoveSnapshot = 2,
+        DefaultSnapshotPath = 3,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct SnapshotPath {
+        pub snapshot_id: Guid,
+        pub snapshot_file_path: PCWStr,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub snapshot_path: SnapshotPath,
+        pub snapshot_id: Guid,
+        pub default_file_path: PCWStr,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+        WritableSnapshot = 0x00000001,
+    }
+}
+
+pub mod apply_snapshot_vhdset {
+    use crate::windefs::*;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub snapshot_id: Guid,
+        pub leaf_snapshot_id: Guid,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+        Writable = 0x00000001,
+    }
+}
+
+pub mod raw_scsi_virtual_disk {
+    use crate::windefs::*;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub rsvd_handle: Bool,
+        pub data_in: libc::c_uchar,
+        pub cdb_length: libc::c_uchar,
+        pub sense_info_length: libc::c_uchar,
+        pub srb_flags: u64,
+        pub data_transfer_length: u64,
+        pub data_buffer: *mut Void,
+        pub sense_info: *mut libc::c_uchar,
+        pub cdb: *mut libc::c_uchar,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct ResponseVersion1 {
+        pub scsi_status: libc::c_uchar,
+        pub sense_info_length: libc::c_uchar,
+        pub data_transfer_length: u64,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union ResponseVersionDetails {
+        pub version1: ResponseVersion1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Response {
+        pub version: Version,
+        pub version_details: ResponseVersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+    }
+}
+
+pub mod fork_virtual_disk {
+    use crate::windefs::*;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Version {
+        Unspecified = 0,
+        Version1 = 1,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct Version1 {
+        pub forked_virtual_disk_path: PCWStr,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub union VersionDetails {
+        pub version1: Version1,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Parameters {
+        pub version: Version,
+        pub version_details: VersionDetails,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum Flag {
+        None = 0x00000000,
+        ExistingFile = 0x00000001,
+    }
+}
