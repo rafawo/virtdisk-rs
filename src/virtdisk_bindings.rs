@@ -60,110 +60,14 @@ extern "C" {
         sizeUsed: *const u64
     ) -> DWord;
 
-}
-/*
+    pub fn GetVirtualDiskInformation(
+        virtualDiskHandle: Handle,
+        virtualDiskInfoSize: *const u64,
+        virtualDiskInfo: *mut GetVirtualDiskInfo,
+        sizeUsed: *mut u64,
+    ) -> DWord;
 
-//
-// GetVirtualDiskInformation
-//
-
-// Version definitions
-typedef enum _GET_VIRTUAL_DISK_INFO_VERSION
-{
-    GET_VIRTUAL_DISK_INFO_UNSPECIFIED                   = 0,
-    GET_VIRTUAL_DISK_INFO_SIZE                          = 1,
-    GET_VIRTUAL_DISK_INFO_IDENTIFIER                    = 2,
-    GET_VIRTUAL_DISK_INFO_PARENT_LOCATION               = 3,
-    GET_VIRTUAL_DISK_INFO_PARENT_IDENTIFIER             = 4,
-    GET_VIRTUAL_DISK_INFO_PARENT_TIMESTAMP              = 5,
-    GET_VIRTUAL_DISK_INFO_VIRTUAL_STORAGE_TYPE          = 6,
-    GET_VIRTUAL_DISK_INFO_PROVIDER_SUBTYPE              = 7,
-    GET_VIRTUAL_DISK_INFO_IS_4K_ALIGNED                 = 8,
-    GET_VIRTUAL_DISK_INFO_PHYSICAL_DISK                 = 9,
-    GET_VIRTUAL_DISK_INFO_VHD_PHYSICAL_SECTOR_SIZE      = 10,
-    GET_VIRTUAL_DISK_INFO_SMALLEST_SAFE_VIRTUAL_SIZE    = 11,
-    GET_VIRTUAL_DISK_INFO_FRAGMENTATION                 = 12,
-    GET_VIRTUAL_DISK_INFO_IS_LOADED                     = 13,
-    GET_VIRTUAL_DISK_INFO_VIRTUAL_DISK_ID               = 14,
-    GET_VIRTUAL_DISK_INFO_CHANGE_TRACKING_STATE         = 15,
-
-} GET_VIRTUAL_DISK_INFO_VERSION;
-
-
-// Versioned parameter structure for GetVirtualDiskInformation
-typedef struct _GET_VIRTUAL_DISK_INFO
-{
-    GET_VIRTUAL_DISK_INFO_VERSION Version;
-
-    union
-    {
-        struct
-        {
-            ULONGLONG VirtualSize;
-            ULONGLONG PhysicalSize;
-            ULONG     BlockSize;
-            ULONG     SectorSize;
-        } Size;
-
-        GUID Identifier;
-
-        struct
-        {
-            BOOL  ParentResolved;
-            WCHAR ParentLocationBuffer[1];  // MultiSz string
-        } ParentLocation;
-
-        GUID ParentIdentifier;
-
-        ULONG ParentTimestamp;
-
-        VIRTUAL_STORAGE_TYPE VirtualStorageType;
-
-        ULONG ProviderSubtype;
-
-        BOOL Is4kAligned;
-
-        BOOL IsLoaded;
-
-        struct
-        {
-            ULONG LogicalSectorSize;
-            ULONG PhysicalSectorSize;
-            BOOL IsRemote;
-        } PhysicalDisk;
-
-        ULONG VhdPhysicalSectorSize;
-
-        ULONGLONG SmallestSafeVirtualSize;
-
-        // GET_VIRTUAL_DISK_INFO_FRAGMENTATION
-        ULONG FragmentationPercentage;
-
-        // GET_VIRTUAL_DISK_INFO_VIRTUAL_DISK_ID
-        GUID VirtualDiskId;
-
-        struct
-        {
-            BOOL Enabled;
-            BOOL NewerChanges;
-            WCHAR MostRecentId[1];
-        } ChangeTrackingState;
-    };
-} GET_VIRTUAL_DISK_INFO, *PGET_VIRTUAL_DISK_INFO;
-
-#define VIRTUAL_DISK_MAXIMUM_CHANGE_TRACKING_ID_LENGTH 256
-
-_Success_(return == ERROR_SUCCESS)
-DWORD
-WINAPI
-GetVirtualDiskInformation(
-    _In_                                    HANDLE                 VirtualDiskHandle,
-    _Inout_                                 PULONG                 VirtualDiskInfoSize,
-    _Inout_updates_bytes_to_(*VirtualDiskInfoSize, *VirtualDiskInfoSize) PGET_VIRTUAL_DISK_INFO VirtualDiskInfo,
-    _Out_opt_                               PULONG                 SizeUsed
-    );
-
-
+} /*
 
 //
 // SetVirtualDiskInformation

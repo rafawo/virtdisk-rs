@@ -52,16 +52,16 @@ pub struct OpenVirtualDiskVersion1 {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct OpenVirtualDiskVersion2 {
-    pub get_info_only: bool,
-    pub read_only: bool,
+    pub get_info_only: Bool,
+    pub read_only: Bool,
     pub resiliency_guid: Guid,
 }
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct OpenVirtualDiskVersion3 {
-    pub get_info_only: bool,
-    pub read_only: bool,
+    pub get_info_only: Bool,
+    pub read_only: Bool,
     pub resiliency_guid: Guid,
     pub snapshot_id: Guid,
 }
@@ -458,3 +458,84 @@ pub enum GetStorageDependencyFlag {
     /// The handle provided is to a disk, not volume or file
     DiskHandle = 0x00000002,
 }
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum GetVirtualDiskInfoVersion {
+    Unspecified = 0,
+    Size = 1,
+    Identifier = 2,
+    ParentLocation = 3,
+    ParentIdentifier = 4,
+    ParentTimeStamp = 5,
+    VirtualStorageType = 6,
+    ProviderSubType = 7,
+    Is4KAligned = 8,
+    PhysicalDisk = 9,
+    VhdPhysicalSectorSize = 10,
+    SmallestSafeVirtualSize = 11,
+    Fragmentation = 12,
+    IsLoaded = 13,
+    VirtualDiskId = 14,
+    ChangeTrackingState = 15,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct GetVirtualDiskInfoSize {
+    pub virtual_size: u64,
+    pub physical_size: u64,
+    pub block_size: u64,
+    pub sector_size: u64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct GetVirtualDiskInfoParentLocation {
+    pub parent_resolved: Bool,
+    pub parent_location_buffer: [libc::wchar_t; 1],
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct GetVirtualDiskInfoPhysicalDisk {
+    pub logical_sector_size: u64,
+    pub physical_sector_size: u64,
+    pub is_remote: Bool,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct GetVirtualDiskInfoChangeTrackingState {
+    pub enabled: Bool,
+    pub newer_changes: Bool,
+    pub most_recent_id: [libc::wchar_t; 1],
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union GetVirtualDiskInfoVersionDetails {
+    pub size: GetVirtualDiskInfoSize,
+    pub parent_location: GetVirtualDiskInfoParentLocation,
+    pub parent_identifier: Guid,
+    pub parent_time_stamp: u64,
+    pub virtual_storage_type: VirtualStorageType,
+    pub provider_sub_type: u64,
+    pub is_4k_aligned: Bool,
+    pub is_loaded: Bool,
+    pub physical_disk: GetVirtualDiskInfoPhysicalDisk,
+    pub vhd_physical_sector_size: u64,
+    pub smallest_safe_virtual_size: u64,
+    pub fragmentation_percentage: u64,
+    pub virtual_disk_id: Guid,
+    pub change_tracking_state: GetVirtualDiskInfoChangeTrackingState,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct GetVirtualDiskInfo {
+    pub version: GetVirtualDiskInfoVersion,
+    pub version_details: GetVirtualDiskInfoVersionDetails,
+}
+
+pub const VIRTUAL_DISK_MAXIMUM_CHANGE_TRACKING_ID_LENGTH: u64 = 256;
