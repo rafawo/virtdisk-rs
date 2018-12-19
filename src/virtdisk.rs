@@ -102,7 +102,7 @@ impl VirtualDisk {
     /// Opens a virtual hard disk (VHD) or CD or DVD image file (ISO) for use, and returns a safe wrapper to its handle.
     /// The returned object can be used to call any virtdisk API that operates over an open
     /// handle to a virtual disk.
-    /// The flags are a u32 representation of any valid combination from open_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `open_virtual_disk::Flag` values.
     pub fn open(
         virtual_storage_type: VirtualStorageType,
         path: &str,
@@ -136,7 +136,7 @@ impl VirtualDisk {
     /// or physical disk.
     /// The returned object can be used to call any virtdisk API that operates over an open
     /// handle to a virtual disk.
-    /// The flags are a u32 representation of any valid combination from create_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `create_virtual_disk::Flag` values.
     pub fn create(
         virtual_storage_type: VirtualStorageType,
         path: &str,
@@ -179,7 +179,7 @@ impl VirtualDisk {
 
     /// Attaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate VHD provider to accomplish the attachment.
-    /// The flags are a u32 representation of any valid combination from attach_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `attach_virtual_disk::Flag` values.
     pub fn attach(
         &self,
         security_descriptor: Option<SecurityDescriptor>,
@@ -215,7 +215,7 @@ impl VirtualDisk {
 
     /// Detaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate virtual disk provider to accomplish the operation.
-    /// The flags are a u32 representation of any valid combination from detach_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `detach_virtual_disk::Flag` values.
     pub fn detach(&self, flags: u32, provider_specific_flags: u64) -> Result<(), ResultCode> {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
@@ -463,7 +463,7 @@ impl VirtualDisk {
     }
 
     /// Reduces the size of a virtual disk backing store file.
-    /// The flags are a u32 representation of any valid combination from compact_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `compact_virtual_disk::Flag` values.
     pub fn compact(
         &self,
         flags: u32,
@@ -484,7 +484,7 @@ impl VirtualDisk {
     }
 
     /// Merges a child virtual hard disk in a differencing chain with one or more parent virtual disks in the chain.
-    /// The flags are a u32 representation of any valid combination from merge_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `merge_virtual_disk::Flag` values.
     pub fn merge(
         &self,
         flags: u32,
@@ -505,7 +505,7 @@ impl VirtualDisk {
     }
 
     /// Increases the size of a fixed or dynamically expandable virtual hard disk.
-    /// The flags are a u32 representation of any valid combination from expand_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `expand_virtual_disk::Flag` values.
     pub fn expand(
         &self,
         flags: u32,
@@ -526,7 +526,7 @@ impl VirtualDisk {
     }
 
     /// Resizes virtual hard disk.
-    /// The flags are a u32 representation of any valid combination from resize_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `resize_virtual_disk::Flag` values.
     pub fn resize(
         &self,
         flags: u32,
@@ -553,7 +553,7 @@ impl VirtualDisk {
     /// `VirtualHardDisk::break_mirror` is called to stop using the original file and only use the mirror.
     /// `VirtualHardDisk::get_operation_progress` can be used to determine if the disks are fully mirrored
     /// and writes go to both virtual disks.
-    /// The flags are a u32 representation of any valid combination from mirror_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from `mirror_virtual_disk::Flag` values.
     pub fn mirror(
         &self,
         flags: u32,
@@ -572,6 +572,19 @@ impl VirtualDisk {
     pub fn break_mirror(&self) -> Result<(), ResultCode> {
         unsafe {
             match BreakMirrorVirtualDisk(self.handle) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Attaches a parent to a virtual disk opened with the `open_virtual_disk::Flag::CustomDiffChain` flag.
+    pub fn add_parent(&self, parent_path: &str) -> Result<(), ResultCode> {
+        unsafe {
+            match AddVirtualDiskParent(
+                self.handle,
+                WideCString::from_str(parent_path).unwrap().as_ptr(),
+            ) {
                 result if result == 0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
