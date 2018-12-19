@@ -568,7 +568,7 @@ impl VirtualDisk {
         }
     }
 
-    /// Breaks a previously inititated mirror operation and sets the mirror to be the active virtual disk.
+    /// Breaks a previously initiated mirror operation and sets the mirror to be the active virtual disk.
     pub fn break_mirror(&self) -> Result<(), ResultCode> {
         unsafe {
             match BreakMirrorVirtualDisk(self.handle) {
