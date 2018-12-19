@@ -37,7 +37,7 @@ impl VirtualDisk {
     /// Opens a virtual hard disk (VHD) or CD or DVD image file (ISO) for use, and returns a safe wrapper to its handle.
     /// The returned object can be used to call any virtdisk API that operates over an open
     /// handle to a virtual disk.
-    /// The flags are an u32 representation of any valid combination from open_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from open_virtual_disk::Flag values.
     pub fn open(
         virtual_storage_type: VirtualStorageType,
         path: &str,
@@ -71,7 +71,7 @@ impl VirtualDisk {
     /// or physical disk.
     /// The returned object can be used to call any virtdisk API that operates over an open
     /// handle to a virtual disk.
-    /// The flags are an u32 representation of any valid combination from create_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from create_virtual_disk::Flag values.
     pub fn create(
         virtual_storage_type: VirtualStorageType,
         path: &str,
@@ -114,7 +114,7 @@ impl VirtualDisk {
 
     /// Attaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate VHD provider to accomplish the attachment.
-    /// The flags are an u32 representation of any valid combination from attach_virtual_disk::Flag values.
+    /// The flags are a u32 representation of any valid combination from attach_virtual_disk::Flag values.
     pub fn attach(
         &self,
         security_descriptor: Option<SecurityDescriptor>,
@@ -150,6 +150,7 @@ impl VirtualDisk {
 
     /// Detaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate virtual disk provider to accomplish the operation.
+    /// The flags are a u32 representation of any valid combination from detach_virtual_disk::Flag values.
     pub fn detach(&self, flags: u32, provider_specific_flags: u64) -> Result<(), DWord> {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
