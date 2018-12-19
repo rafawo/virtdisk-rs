@@ -442,4 +442,23 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Checks the progress of an asynchronous virtual disk operation.
+    pub fn get_operation_progress(
+        &self,
+        overlapped: &Overlapped,
+    ) -> Result<VirtualDiskProgress, ResultCode> {
+        let mut progress = VirtualDiskProgress {
+            operation_status: 0,
+            current_value: 0,
+            completion_value: 0,
+        };
+
+        unsafe {
+            match GetVirtualDiskOperationProgress(self.handle, overlapped, &mut progress) {
+                result if result == 0 => Ok(progress),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
