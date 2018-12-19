@@ -303,4 +303,14 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Sets information about a virtual hard disk.
+    pub fn set_information(&self, info: &set_virtual_disk::Info) -> Result<(), ResultCode> {
+        unsafe {
+            match SetVirtualDiskInformation(self.handle, info) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
