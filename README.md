@@ -1,9 +1,9 @@
-# hcsrs
-Rust wrapper of Host Compute Service API
+# virtdisk-rs
+Rust wrapper of VirtDisk APIs
 
 ## Overview
 
-This project is a collection of Rust libraries that wrap functionality exposed by the [VirtDisk](https://docs.microsoft.com/en-us/windows/desktop/api/virtdisk/).
+This project is a collection of Rust libraries that wrap functionality exposed by [VirtDisk](https://docs.microsoft.com/en-us/windows/desktop/api/virtdisk/).
 
 VirtDisk APIs are part of the [Windows 10 SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk).
 

@@ -1,7 +1,4 @@
 //! This module provides Rust idiomatic abstractions to the C bindings of VirtDisk.
-//! Both the FFI bindings and Rust wrappers are public to this crate, to give flexibility
-//! to consumer code to use the bindings directly as they see fit.
-//!
 
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
@@ -36,8 +33,6 @@ fn error_code_to_result_code(error_code: DWord) -> ResultCode {
         error_code => ResultCode::WindowsErrorCode(error_code),
     }
 }
-
-const MAX_PATH: u64 = 256;
 
 /// Safe abstraction to a virtual hard disk handle.
 /// Additionally, provides the entry point to all save wrappers to the virtdisk C bindings.
@@ -227,7 +222,7 @@ impl VirtualDisk {
 
     /// Retrieves the path to the physical device object that contains a virtual hard disk (VHD) or CD or DVD image file (ISO).
     pub fn get_physical_path(&self) -> Result<String, ResultCode> {
-        const PATH_SIZE: u64 = MAX_PATH;
+        const PATH_SIZE: u64 = 256; // MAX_PATH
         let mut disk_path_wstr: [libc::wchar_t; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
         unsafe {
