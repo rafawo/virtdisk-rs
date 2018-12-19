@@ -47,6 +47,10 @@ pub struct VirtualDisk {
 
 impl std::ops::Drop for VirtualDisk {
     fn drop(&mut self) {
+        if self.handle == std::ptr::null_mut() {
+            return;
+        }
+
         #[allow(unused_assignments)]
         let mut result: Bool = 0;
 
@@ -66,6 +70,35 @@ impl std::ops::Drop for VirtualDisk {
 }
 
 impl VirtualDisk {
+    /// Wraps the supplied virtual hard disk handle, providing a safe drop implementation that will close the handle
+    /// on the end of its lifetime.
+    pub fn wrap_handle(handle: Handle) -> Result<VirtualDisk, ResultCode> {
+        match handle {
+            handle if handle == std::ptr::null_mut() => Err(ResultCode::InvalidParameter),
+            handle => Ok(VirtualDisk { handle }),
+        }
+    }
+
+    /// Releases the wrapped handle to ensure that at the end of the lifetime of this VirtualDisk instance
+    /// the handle is not closed.
+    ///
+    /// # Unsafe
+    ///
+    /// Marked as unsafe because of the possibility of leaking a handle.
+    pub unsafe fn release_handle(&mut self) -> Handle {
+        let handle = self.handle;
+        self.handle = std::ptr::null_mut();
+        handle
+    }
+
+    /// Returns a cloned value of the internally stored handle to the virtual disk.
+    /// This is useful so that the virtual hard disk handle can be used on other Windows APIs.
+    /// Be careful and do not close the handle returned here because the code will panic at the
+    /// end of the lifetime of this VirtualDisk instance if CloseHandle fails.
+    pub fn get_handle(&self) -> Handle {
+        self.handle.clone()
+    }
+
     /// Opens a virtual hard disk (VHD) or CD or DVD image file (ISO) for use, and returns a safe wrapper to its handle.
     /// The returned object can be used to call any virtdisk API that operates over an open
     /// handle to a virtual disk.
@@ -142,12 +175,6 @@ impl VirtualDisk {
                 result => Err(error_code_to_result_code(result)),
             }
         }
-    }
-
-    /// Returns a cloned value of the internally stored handle to the virtual disk.
-    /// This is useful so that the virtual hard disk handle can be used on other Windows APIs.
-    pub fn get_handle(&self) -> Handle {
-        self.handle.clone()
     }
 
     /// Attaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
