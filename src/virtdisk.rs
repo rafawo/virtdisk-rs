@@ -141,6 +141,11 @@ impl VirtualDisk {
         }
     }
 
+    /// Returns a cloned value of the internally stored handle to the virtual disk.
+    pub fn get_handle(&self) -> Handle {
+        self.handle.clone()
+    }
+
     /// Attaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate VHD provider to accomplish the attachment.
     /// The flags are a u32 representation of any valid combination from attach_virtual_disk::Flag values.
