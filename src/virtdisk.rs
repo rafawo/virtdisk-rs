@@ -625,4 +625,19 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Creates a snapshot of the current virtual disk for VHD Set files.
+    /// The flags are a u32 representation of any valid combination from `take_snapshot_vhdset::Flag` values.
+    pub fn vhdset_take_snapshot(
+        &self,
+        parameters: &take_snapshot_vhdset::Parameters,
+        flags: u32,
+    ) -> Result<(), ResultCode> {
+        unsafe {
+            match TakeSnapshotVhdSet(self.handle, parameters, flags) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
