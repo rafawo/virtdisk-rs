@@ -269,7 +269,7 @@ impl VirtualDisk {
         &self,
         flags: u32,
         info_size: u64,
-        info: &mut storage_dependency::Info,
+        info: *mut storage_dependency::Info,
     ) -> Result<u64, ResultCode> {
         let mut size_used: u64 = 0;
 
