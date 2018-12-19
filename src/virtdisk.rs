@@ -714,6 +714,7 @@ impl VirtualDisk {
     }
 
     /// Forks a virtual hard disk.
+    /// `VirtualHardDisk::get_operation_progress` can be used to determine if the disk has been fully forked.
     /// The flags are a u32 representation of any valid combination from `fork_virtual_disk::Flag` values.
     pub fn fork(
         &self,
