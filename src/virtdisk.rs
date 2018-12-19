@@ -482,4 +482,25 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Merges a child virtual hard disk in a differencing chain with one or more parent virtual disks in the chain.
+    /// The flags are a u32 representation of any valid combination from merge_virtual_disk::Flag values.
+    pub fn merge(
+        &self,
+        flags: u32,
+        parameters: &merge_virtual_disk::Parameters,
+        overlapped: Option<&Overlapped>,
+    ) -> Result<(), ResultCode> {
+        let overlapped_ptr = match overlapped {
+            Some(overlapped) => overlapped,
+            None => std::ptr::null(),
+        };
+
+        unsafe {
+            match MergeVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
