@@ -351,9 +351,8 @@ impl VirtualDisk {
         unsafe {
             let result =
                 EnumerateVirtualDiskMetadata(self.handle, &mut vector_size, guids.as_mut_ptr());
-            let result = error_code_to_result_code(result);
 
-            match result {
+            match error_code_to_result_code(result) {
                 ResultCode::InsufficientBuffer => {
                     guids.resize(
                         vector_size as usize,
@@ -378,6 +377,42 @@ impl VirtualDisk {
                     }
                 }
                 ResultCode::Success => Ok(guids),
+                error => Err(error),
+            }
+        }
+    }
+
+    /// Retrieves the specified metadata from the virtual disk as an u8 byte buffer.
+    pub fn get_metadata(&self, item: &Guid) -> Result<Vec<u8>, ResultCode> {
+        let mut buffer: Vec<u8> = Vec::new();
+        let mut buffer_size: u64 = 0;
+
+        unsafe {
+            let result = GetVirtualDiskMetadata(
+                self.handle,
+                item,
+                &mut buffer_size,
+                buffer.as_mut_ptr() as *mut Void,
+            );
+
+            match error_code_to_result_code(result) {
+                ResultCode::InsufficientBuffer => {
+                    buffer.resize(buffer_size as usize, 0);
+
+                    match GetVirtualDiskMetadata(
+                        self.handle,
+                        item,
+                        &mut buffer_size,
+                        buffer.as_mut_ptr() as *mut Void,
+                    ) {
+                        result if result == 0 => {
+                            assert_eq!(buffer_size as usize, buffer.len());
+                            Ok(buffer)
+                        }
+                        result => Err(error_code_to_result_code(result)),
+                    }
+                }
+                ResultCode::Success => Ok(buffer),
                 error => Err(error),
             }
         }
