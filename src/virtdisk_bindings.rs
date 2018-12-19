@@ -48,7 +48,7 @@ extern "C" {
     ) -> DWord;
 
     pub fn GetAllAttachedVirtualDiskPhysicalPaths(
-        pathsBufferSizeInBytes: *const u64,
+        pathsBufferSizeInBytes: *mut u64,
         pathsBuffer: PWStr,
     ) -> DWord;
 

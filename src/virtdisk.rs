@@ -6,6 +6,7 @@
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
+use widestring::{WideCString, WideStr, WideString};
 
 /// Enumeration of common error codes returned from the virtdisk APIs.
 #[repr(C)]
@@ -18,6 +19,7 @@ pub enum ResultCode {
     FileSystemLimitation,
     FileCorrupt,
     FileNotFound,
+    InsufficientBuffer,
     WindowsErrorCode(DWord),
 }
 
@@ -30,6 +32,7 @@ fn error_code_to_result_code(error_code: DWord) -> ResultCode {
         665 => ResultCode::FileSystemLimitation,
         1392 => ResultCode::FileCorrupt,
         2 => ResultCode::FileNotFound,
+        122 => ResultCode::InsufficientBuffer,
         error_code => ResultCode::WindowsErrorCode(error_code),
     }
 }
@@ -84,7 +87,7 @@ impl VirtualDisk {
         unsafe {
             match OpenVirtualDisk(
                 &virtual_storage_type,
-                widestring::U16CString::from_str(path).unwrap().as_ptr(),
+                WideCString::from_str(path).unwrap().as_ptr(),
                 virtual_disk_access_mask,
                 flags,
                 parameters_ptr,
@@ -126,7 +129,7 @@ impl VirtualDisk {
         unsafe {
             match CreateVirtualDisk(
                 &virtual_storage_type,
-                widestring::U16CString::from_str(path).unwrap().as_ptr(),
+                WideCString::from_str(path).unwrap().as_ptr(),
                 virtual_disk_access_mask,
                 security_descriptor_ptr,
                 flags,
@@ -202,12 +205,59 @@ impl VirtualDisk {
 
         unsafe {
             match GetVirtualDiskPhysicalPath(self.handle, &PATH_SIZE, disk_path_wstr.as_mut_ptr()) {
-                result if result == 0 => Ok(widestring::WideString::from_ptr(
+                result if result == 0 => Ok(WideString::from_ptr(
                     disk_path_wstr.as_ptr(),
                     PATH_SIZE as usize,
                 )
                 .to_string_lossy()),
                 result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Retrieves the physical paths to all attached virtual disks in a vector.
+    pub fn get_all_attached_physical_paths() -> Result<Vec<String>, ResultCode> {
+        let mut paths_buffer: Vec<libc::wchar_t> = Vec::new();
+        let mut buffer_size_bytes: u64 = 0;
+
+        let mut paths: Vec<String> = Vec::new();
+
+        unsafe {
+            // First figure out the required size to fit all paths
+            let result = GetAllAttachedVirtualDiskPhysicalPaths(
+                &mut buffer_size_bytes,
+                paths_buffer.as_mut_ptr(),
+            );
+
+            match error_code_to_result_code(result) {
+                ResultCode::InsufficientBuffer => {
+                    let buffer_size =
+                        buffer_size_bytes as usize / std::mem::size_of::<libc::wchar_t>();
+                    paths_buffer.resize(buffer_size, 0);
+                    match GetAllAttachedVirtualDiskPhysicalPaths(
+                        &mut buffer_size_bytes,
+                        paths_buffer.as_mut_ptr(),
+                    ) {
+                        result if result == 0 => {
+                            assert_eq!(
+                                buffer_size * std::mem::size_of::<libc::wchar_t>(),
+                                buffer_size_bytes as usize
+                            );
+                            let iter = paths_buffer.as_slice().split(|element| *element == 0);
+
+                            for string in iter {
+                                if !string.is_empty() {
+                                    paths.push(WideStr::from_slice(string).to_string_lossy());
+                                }
+                            }
+
+                            Ok(paths)
+                        }
+                        result => Err(error_code_to_result_code(result)),
+                    }
+                }
+                ResultCode::Success => Ok(paths),
+                error => Err(error),
             }
         }
     }
