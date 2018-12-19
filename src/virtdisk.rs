@@ -628,7 +628,7 @@ impl VirtualDisk {
 
     /// Creates a snapshot of the current virtual disk for VHD Set files.
     /// The flags are a u32 representation of any valid combination from `take_snapshot_vhdset::Flag` values.
-    pub fn vhdset_take_snapshot(
+    pub fn take_snapshot_vhdset(
         &self,
         parameters: &take_snapshot_vhdset::Parameters,
         flags: u32,
@@ -643,13 +643,29 @@ impl VirtualDisk {
 
     /// Deletes a snapshot from a VHD Set file.
     /// The flags are a u32 representation of any valid combination from `delete_snapshot_vhdset::Flag` values.
-    pub fn vhdset_delete_snapshot(
+    pub fn delete_snapshot_vhdset(
         &self,
         parameters: &delete_snapshot_vhdset::Parameters,
         flags: u32,
     ) -> Result<(), ResultCode> {
         unsafe {
             match DeleteSnapshotVhdSet(self.handle, parameters, flags) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Modifies the internal contents of a virtual disk file. Can be used to set the active leaf,
+    /// or to fix up snapshot entries.
+    /// The flags are a u32 representation of any valid combination from `modify_vhdset::Flag` values.
+    pub fn modify_vhdset(
+        &self,
+        parameters: &modify_vhdset::Parameters,
+        flags: u32,
+    ) -> Result<(), ResultCode> {
+        unsafe {
+            match ModifyVhdSet(self.handle, parameters, flags) {
                 result if result == 0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
