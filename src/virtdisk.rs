@@ -524,4 +524,25 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Resizes virtual hard disk.
+    /// The flags are a u32 representation of any valid combination from resize_virtual_disk::Flag values.
+    pub fn resize(
+        &self,
+        flags: u32,
+        parameters: &resize_virtual_disk::Parameters,
+        overlapped: Option<&Overlapped>,
+    ) -> Result<(), ResultCode> {
+        let overlapped_ptr = match overlapped {
+            Some(overlapped) => overlapped,
+            None => std::ptr::null(),
+        };
+
+        unsafe {
+            match ResizeVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
