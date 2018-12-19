@@ -343,7 +343,7 @@ impl VirtualDisk {
 
     /// Enumerates the metadata associated with a virtual disk.
     /// The returned vector of GUID refer to a set of metadata that can be retrieved
-    /// using function `get_metadata`.
+    /// using function `VirtualHardDisk::get_metadata`.
     pub fn enumerate_metadata(&self) -> Result<Vec<Guid>, ResultCode> {
         let mut guids: Vec<Guid> = Vec::new();
         let mut vector_size: u64 = 0;
@@ -540,6 +540,28 @@ impl VirtualDisk {
 
         unsafe {
             match ResizeVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Initiates a mirror operation for a virtual disk. Once the mirroring operation is initiated it will
+    /// not complete until either [CancelIo](https://docs.microsoft.com/en-us/windows/desktop/FileIO/cancelio)
+    /// or [CancelIoEx](https://docs.microsoft.com/en-us/windows/desktop/FileIO/cancelioex-func) is called
+    /// to cancel all I-O on the VirtualHardDiskHandle, leaving the original file as the current or
+    /// `VirtualHardDisk::break_mirror` is called to stop using the original file and only use the mirror.
+    /// `VirtualHardDisk::get_operation_progress` can be used to determine if the disks are fully mirrored
+    /// and writes go to both virtual disks.
+    /// The flags are a u32 representation of any valid combination from mirror_virtual_disk::Flag values.
+    pub fn mirror(
+        &self,
+        flags: u32,
+        parameters: &mirror_virtual_disk::Parameters,
+        overlapped: &Overlapped,
+    ) -> Result<(), ResultCode> {
+        unsafe {
+            match MirrorVirtualDisk(self.handle, flags, parameters, overlapped) {
                 result if result == 0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
