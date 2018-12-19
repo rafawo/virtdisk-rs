@@ -686,4 +686,30 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Issues an embedded SCSI request directly to a virtual hard disk.
+    /// The flags are a u32 representation of any valid combination from `raw_scsi_virtual_disk::Flag` values.
+    pub fn raw_scsi_virtual_disk(
+        &self,
+        parameters: &raw_scsi_virtual_disk::Parameters,
+        flags: u32,
+    ) -> Result<raw_scsi_virtual_disk::Response, ResultCode> {
+        let mut response = raw_scsi_virtual_disk::Response {
+            version: raw_scsi_virtual_disk::Version::Unspecified,
+            version_details: raw_scsi_virtual_disk::ResponseVersionDetails {
+                version1: raw_scsi_virtual_disk::ResponseVersion1 {
+                    scsi_status: 0,
+                    sense_info_length: 0,
+                    data_transfer_length: 0,
+                },
+            },
+        };
+
+        unsafe {
+            match RawSCSIVirtualDisk(self.handle, parameters, flags, &mut response) {
+                result if result == 0 => Ok(response),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
