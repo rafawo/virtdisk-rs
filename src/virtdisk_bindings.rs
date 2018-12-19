@@ -23,7 +23,7 @@ extern "C" {
         providerSpecificFlags: u64,
         parameters: *const create_virtual_disk::Parameters,
         overlapped: *const Overlapped,
-        handle: Handle,
+        handle: *mut Handle,
     ) -> DWord;
 
     pub fn AttachVirtualDisk(
