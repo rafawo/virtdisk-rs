@@ -185,7 +185,7 @@ extern "C" {
         virtualDiskHandle: Handle,
         flags: u32, // fork_virtual_disk::Flag
         parameters: *const fork_virtual_disk::Parameters,
-        overlapped: *mut Overlapped,
+        overlapped: *const Overlapped,
     ) -> DWord;
 
     pub fn CompleteForkVirtualDisk(virtualDiskHandle: Handle) -> DWord;

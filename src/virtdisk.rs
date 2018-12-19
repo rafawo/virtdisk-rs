@@ -712,4 +712,30 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Forks a virtual hard disk.
+    /// The flags are a u32 representation of any valid combination from `fork_virtual_disk::Flag` values.
+    pub fn fork(
+        &self,
+        flags: u32,
+        parameters: &fork_virtual_disk::Parameters,
+        overlapped: &Overlapped,
+    ) -> Result<(), ResultCode> {
+        unsafe {
+            match ForkVirtualDisk(self.handle, flags, parameters, overlapped) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Completes a virtual hard disk fork initiated with `VirtualHardDisk::fork`.
+    pub fn complete_fork(&self) -> Result<(), ResultCode> {
+        unsafe {
+            match CompleteForkVirtualDisk(self.handle) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
