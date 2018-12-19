@@ -590,4 +590,39 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Retrieves information about changes to the specified areas of a virtual hard disk
+    /// that are tracked by resilient change tracking (RCT).
+    /// Returns a tuple with the number of `query_changes_virtual_disk::Range` structures that the method
+    /// placed in the array and the processed length in bytes, which indicates for how much of the area that the `byte_length`
+    /// parameter specifies that changes were captured in the available space of the array that the `ranges`
+    /// parameter specifies.
+    /// The flags are a u32 representation of any valid combination from `query_changes_virtual_disk::Flag` values.
+    pub fn query_changes(
+        &self,
+        change_tracking_id: &str,
+        byte_offset: u64,
+        byte_length: u64,
+        flags: u32,
+        ranges: &mut [query_changes_virtual_disk::Range],
+    ) -> Result<(u64, u64), ResultCode> {
+        let mut range_count: u64 = ranges.len() as u64;
+        let mut processed_length: u64 = 0;
+
+        unsafe {
+            match QueryChangesVirtualDisk(
+                self.handle,
+                WideCString::from_str(change_tracking_id).unwrap().as_ptr(),
+                byte_offset,
+                byte_length,
+                flags,
+                ranges.as_mut_ptr(),
+                &mut range_count,
+                &mut processed_length,
+            ) {
+                result if result == 0 => Ok((range_count, processed_length)),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
