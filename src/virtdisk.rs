@@ -108,12 +108,12 @@ impl VirtualDisk {
         path: &str,
         virtual_disk_access_mask: VirtualDiskAccessMask,
         flags: u32,
-        parameters: Option<open_virtual_disk::Parameters>,
+        parameters: Option<&open_virtual_disk::Parameters>,
     ) -> Result<VirtualDisk, ResultCode> {
         let mut handle: Handle = std::ptr::null_mut();
 
         let parameters_ptr = match parameters {
-            Some(parameters) => &parameters,
+            Some(parameters) => parameters,
             None => std::ptr::null(),
         };
 
@@ -145,7 +145,7 @@ impl VirtualDisk {
         flags: u32,
         provider_specific_flags: u64,
         parameters: &create_virtual_disk::Parameters,
-        overlapped: Option<Overlapped>,
+        overlapped: Option<&Overlapped>,
     ) -> Result<VirtualDisk, ResultCode> {
         let mut handle: Handle = std::ptr::null_mut();
 
@@ -155,7 +155,7 @@ impl VirtualDisk {
         };
 
         let overlapped_ptr = match overlapped {
-            Some(overlapped) => &overlapped,
+            Some(overlapped) => overlapped,
             None => std::ptr::null(),
         };
 
@@ -186,7 +186,7 @@ impl VirtualDisk {
         flags: u32,
         provider_specific_flags: u64,
         parameters: &attach_virtual_disk::Parameters,
-        overlapped: Option<Overlapped>,
+        overlapped: Option<&Overlapped>,
     ) -> Result<(), ResultCode> {
         let security_descriptor_ptr = match security_descriptor {
             Some(security_descriptor) => &security_descriptor,
@@ -194,7 +194,7 @@ impl VirtualDisk {
         };
 
         let overlapped_ptr = match overlapped {
-            Some(overlapped) => &overlapped,
+            Some(overlapped) => overlapped,
             None => std::ptr::null(),
         };
 
@@ -457,6 +457,27 @@ impl VirtualDisk {
         unsafe {
             match GetVirtualDiskOperationProgress(self.handle, overlapped, &mut progress) {
                 result if result == 0 => Ok(progress),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Reduces the size of a virtual disk backing store file.
+    /// The flags are a u32 representation of any valid combination from compact_virtual_disk::Flag values.
+    pub fn compact(
+        &self,
+        flags: u32,
+        parameters: &compact_virtual_disk::Parameters,
+        overlapped: Option<&Overlapped>,
+    ) -> Result<(), ResultCode> {
+        let overlapped_ptr = match overlapped {
+            Some(overlapped) => overlapped,
+            None => std::ptr::null(),
+        };
+
+        unsafe {
+            match CompactVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
+                result if result == 0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
