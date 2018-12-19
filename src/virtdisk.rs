@@ -215,7 +215,7 @@ impl VirtualDisk {
         }
     }
 
-    /// Retrieves the physical paths to all attached virtual disks in a vector.
+    /// Retrieves the physical paths to all attached virtual disks and returns it in a vector of strings.
     pub fn get_all_attached_physical_paths() -> Result<Vec<String>, ResultCode> {
         let mut paths_buffer: Vec<libc::wchar_t> = Vec::new();
         let mut buffer_size_bytes: u64 = 0;
