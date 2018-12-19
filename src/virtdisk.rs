@@ -7,6 +7,35 @@ use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
 
+/// Enumeration of common error codes returned from the virtdisk APIs.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ResultCode {
+    Success,
+    InvalidParameter,
+    UnsupportedCompression,
+    FileEncrypted,
+    FileSystemLimitation,
+    FileCorrupt,
+    FileNotFound,
+    WindowsErrorCode(DWord),
+}
+
+fn error_code_to_result_code(error_code: DWord) -> ResultCode {
+    match error_code {
+        0 => ResultCode::Success,
+        87 => ResultCode::InvalidParameter,
+        618 => ResultCode::UnsupportedCompression,
+        6002 => ResultCode::FileEncrypted,
+        665 => ResultCode::FileSystemLimitation,
+        1392 => ResultCode::FileCorrupt,
+        2 => ResultCode::FileNotFound,
+        error_code => ResultCode::WindowsErrorCode(error_code),
+    }
+}
+
+const MAX_PATH: u32 = 256;
+
 /// Safe abstraction to a virtual hard disk handle.
 /// Additionally, provides the entry point to all save wrappers to the virtdisk C bindings.
 pub struct VirtualDisk {
@@ -44,7 +73,7 @@ impl VirtualDisk {
         virtual_disk_access_mask: VirtualDiskAccessMask,
         flags: u32,
         parameters: Option<open_virtual_disk::Parameters>,
-    ) -> Result<VirtualDisk, DWord> {
+    ) -> Result<VirtualDisk, ResultCode> {
         let mut handle: Handle = std::ptr::null_mut();
 
         let parameters_ptr = match parameters {
@@ -62,7 +91,7 @@ impl VirtualDisk {
                 &mut handle,
             ) {
                 result if result == 0 => Ok(VirtualDisk { handle }),
-                result => Err(result),
+                result => Err(error_code_to_result_code(result)),
             }
         }
     }
@@ -81,7 +110,7 @@ impl VirtualDisk {
         provider_specific_flags: u64,
         parameters: &create_virtual_disk::Parameters,
         overlapped: Option<Overlapped>,
-    ) -> Result<VirtualDisk, DWord> {
+    ) -> Result<VirtualDisk, ResultCode> {
         let mut handle: Handle = std::ptr::null_mut();
 
         let security_descriptor_ptr = match security_descriptor {
@@ -107,7 +136,7 @@ impl VirtualDisk {
                 &mut handle,
             ) {
                 result if result == 0 => Ok(VirtualDisk { handle }),
-                result => Err(result),
+                result => Err(error_code_to_result_code(result)),
             }
         }
     }
@@ -122,7 +151,7 @@ impl VirtualDisk {
         provider_specific_flags: u64,
         parameters: &attach_virtual_disk::Parameters,
         overlapped: Option<Overlapped>,
-    ) -> Result<(), DWord> {
+    ) -> Result<(), ResultCode> {
         let security_descriptor_ptr = match security_descriptor {
             Some(security_descriptor) => &security_descriptor,
             None => std::ptr::null(),
@@ -143,7 +172,7 @@ impl VirtualDisk {
                 overlapped_ptr,
             ) {
                 result if result == 0 => Ok(()),
-                result => Err(result),
+                result => Err(error_code_to_result_code(result)),
             }
         }
     }
@@ -151,11 +180,11 @@ impl VirtualDisk {
     /// Detaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate virtual disk provider to accomplish the operation.
     /// The flags are a u32 representation of any valid combination from detach_virtual_disk::Flag values.
-    pub fn detach(&self, flags: u32, provider_specific_flags: u64) -> Result<(), DWord> {
+    pub fn detach(&self, flags: u32, provider_specific_flags: u64) -> Result<(), ResultCode> {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
                 result if result == 0 => Ok(()),
-                result => Err(result),
+                result => Err(error_code_to_result_code(result)),
             }
         }
     }
