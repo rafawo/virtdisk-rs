@@ -79,7 +79,7 @@ impl VirtualDisk {
         security_descriptor: Option<SecurityDescriptor>,
         flags: u32,
         provider_specific_flags: u64,
-        parameters: create_virtual_disk::Parameters,
+        parameters: &create_virtual_disk::Parameters,
         overlapped: Option<Overlapped>,
     ) -> Result<VirtualDisk, DWord> {
         let mut handle: Handle = std::ptr::null_mut();
@@ -102,11 +102,47 @@ impl VirtualDisk {
                 security_descriptor_ptr,
                 flags,
                 provider_specific_flags,
-                &parameters,
+                parameters,
                 overlapped_ptr,
                 &mut handle,
             ) {
                 result if result == 0 => Ok(VirtualDisk { handle }),
+                result => Err(result),
+            }
+        }
+    }
+
+    /// Attaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
+    /// by locating an appropriate VHD provider to accomplish the attachment.
+    /// The flags are an u32 representation of any valid combination from attach_virtual_disk::Flag values.
+    pub fn attach(
+        &self,
+        security_descriptor: Option<SecurityDescriptor>,
+        flags: u32,
+        provider_specific_flags: u64,
+        parameters: &attach_virtual_disk::Parameters,
+        overlapped: Option<Overlapped>,
+    ) -> Result<(), DWord> {
+        let security_descriptor_ptr = match security_descriptor {
+            Some(security_descriptor) => &security_descriptor,
+            _ => std::ptr::null(),
+        };
+
+        let overlapped_ptr = match overlapped {
+            Some(overlapped) => &overlapped,
+            _ => std::ptr::null(),
+        };
+
+        unsafe {
+            match AttachVirtualDisk(
+                self.handle,
+                security_descriptor_ptr,
+                flags,
+                provider_specific_flags,
+                parameters,
+                overlapped_ptr,
+            ) {
+                result if result == 0 => Ok(()),
                 result => Err(result),
             }
         }
