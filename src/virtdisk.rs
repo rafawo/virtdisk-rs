@@ -313,4 +313,46 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Enumerates the metadata associated with a virtual disk.
+    /// The returned vector of GUID refer to a set of metadata that can be retrieved
+    /// using function `get_metadata`.
+    pub fn enumerate_metadata(&self) -> Result<Vec<Guid>, ResultCode> {
+        let mut guids: Vec<Guid> = Vec::new();
+        let mut vector_size: u64 = 0;
+
+        unsafe {
+            let result =
+                EnumerateVirtualDiskMetadata(self.handle, &mut vector_size, guids.as_mut_ptr());
+            let result = error_code_to_result_code(result);
+
+            match result {
+                ResultCode::InsufficientBuffer => {
+                    guids.resize(
+                        vector_size as usize,
+                        Guid {
+                            data1: 0,
+                            data2: 0,
+                            data3: 0,
+                            data4: [0; 8],
+                        },
+                    );
+
+                    match EnumerateVirtualDiskMetadata(
+                        self.handle,
+                        &mut vector_size,
+                        guids.as_mut_ptr(),
+                    ) {
+                        result if result == 0 => {
+                            assert_eq!(vector_size as usize, guids.len());
+                            Ok(guids)
+                        }
+                        result => Err(error_code_to_result_code(result)),
+                    }
+                }
+                ResultCode::Success => Ok(guids),
+                error => Err(error),
+            }
+        }
+    }
 }
