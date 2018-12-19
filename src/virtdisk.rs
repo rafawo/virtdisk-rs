@@ -234,6 +234,7 @@ impl VirtualDisk {
                     let buffer_size =
                         buffer_size_bytes as usize / std::mem::size_of::<libc::wchar_t>();
                     paths_buffer.resize(buffer_size, 0);
+
                     match GetAllAttachedVirtualDiskPhysicalPaths(
                         &mut buffer_size_bytes,
                         paths_buffer.as_mut_ptr(),
@@ -243,9 +244,8 @@ impl VirtualDisk {
                                 buffer_size * std::mem::size_of::<libc::wchar_t>(),
                                 buffer_size_bytes as usize
                             );
-                            let iter = paths_buffer.as_slice().split(|element| *element == 0);
 
-                            for string in iter {
+                            for string in paths_buffer.as_slice().split(|element| *element == 0) {
                                 if !string.is_empty() {
                                     paths.push(WideStr::from_slice(string).to_string_lossy());
                                 }
