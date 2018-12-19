@@ -34,7 +34,7 @@ fn error_code_to_result_code(error_code: DWord) -> ResultCode {
     }
 }
 
-const MAX_PATH: u32 = 256;
+const MAX_PATH: u64 = 256;
 
 /// Safe abstraction to a virtual hard disk handle.
 /// Additionally, provides the entry point to all save wrappers to the virtdisk C bindings.
@@ -190,6 +190,23 @@ impl VirtualDisk {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
                 result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Retrieves the path to the physical device object that contains a virtual hard disk (VHD) or CD or DVD image file (ISO).
+    pub fn get_physical_path(&self) -> Result<String, ResultCode> {
+        const PATH_SIZE: u64 = MAX_PATH;
+        let mut disk_path_wstr: [libc::wchar_t; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
+
+        unsafe {
+            match GetVirtualDiskPhysicalPath(self.handle, &PATH_SIZE, disk_path_wstr.as_mut_ptr()) {
+                result if result == 0 => Ok(widestring::WideString::from_ptr(
+                    disk_path_wstr.as_ptr(),
+                    PATH_SIZE as usize,
+                )
+                .to_string_lossy()),
                 result => Err(error_code_to_result_code(result)),
             }
         }

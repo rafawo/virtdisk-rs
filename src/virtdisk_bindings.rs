@@ -43,7 +43,7 @@ extern "C" {
 
     pub fn GetVirtualDiskPhysicalPath(
         virtualDiskHandle: Handle,
-        diskPathSizeInBytes: *mut u64,
+        diskPathSizeInBytes: *const u64,
         diskPath: PWStr,
     ) -> DWord;
 
