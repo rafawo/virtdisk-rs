@@ -11,7 +11,7 @@ extern "C" {
         virtualDiskAccessMask: VirtualDiskAccessMask,
         flags: u32, // open_virtual_disk::Flag
         parameters: *const open_virtual_disk::Parameters,
-        handle: Handle,
+        handle: *mut Handle,
     ) -> DWord;
 
     pub fn CreateVirtualDisk(
