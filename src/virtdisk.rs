@@ -640,4 +640,19 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Deletes a snapshot from a VHD Set file.
+    /// The flags are a u32 representation of any valid combination from `delete_snapshot_vhdset::Flag` values.
+    pub fn vhdset_delete_snapshot(
+        &self,
+        parameters: &delete_snapshot_vhdset::Parameters,
+        flags: u32,
+    ) -> Result<(), ResultCode> {
+        unsafe {
+            match DeleteSnapshotVhdSet(self.handle, parameters, flags) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
