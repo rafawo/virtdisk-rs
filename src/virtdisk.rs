@@ -262,7 +262,7 @@ impl VirtualDisk {
         }
     }
 
-    /// Returns on the supplied info structure the storage dependency information of a virtual disk.
+    /// Retrieves on the supplied info structure the storage dependency information of a virtual disk.
     /// On success, returns the size used in the info structure.
     /// The flags are a u32 representation of any valid combination from storage_dependency::GetFlag values.
     pub fn get_storage_dependency_information(
@@ -281,6 +281,23 @@ impl VirtualDisk {
                 info,
                 &mut size_used,
             ) {
+                result if result == 0 => Ok(size_used),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
+
+    /// Retrieves on the supplied info structure information of a virtual disk.
+    /// On success, returns the size used in the info structure.
+    pub fn get_information(
+        &self,
+        info_size: u64,
+        info: &mut get_virtual_disk::Info,
+    ) -> Result<u64, ResultCode> {
+        let mut size_used: u64 = 0;
+
+        unsafe {
+            match GetVirtualDiskInformation(self.handle, &info_size, info, &mut size_used) {
                 result if result == 0 => Ok(size_used),
                 result => Err(error_code_to_result_code(result)),
             }
