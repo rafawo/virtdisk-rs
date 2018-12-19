@@ -432,4 +432,14 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Deletes metadata from a virtual disk.
+    pub fn delete_metadata(&self, item: &Guid) -> Result<(), ResultCode> {
+        unsafe {
+            match DeleteVirtualDiskMetadata(self.handle, item) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
