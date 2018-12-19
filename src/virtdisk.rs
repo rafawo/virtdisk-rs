@@ -142,6 +142,7 @@ impl VirtualDisk {
     }
 
     /// Returns a cloned value of the internally stored handle to the virtual disk.
+    /// This is useful so that the virtual hard disk handle can be used on other Windows APIs.
     pub fn get_handle(&self) -> Handle {
         self.handle.clone()
     }
