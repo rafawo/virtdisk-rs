@@ -503,4 +503,25 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Increases the size of a fixed or dynamically expandable virtual hard disk.
+    /// The flags are a u32 representation of any valid combination from expand_virtual_disk::Flag values.
+    pub fn expand(
+        &self,
+        flags: u32,
+        parameters: &expand_virtual_disk::Parameters,
+        overlapped: Option<&Overlapped>,
+    ) -> Result<(), ResultCode> {
+        let overlapped_ptr = match overlapped {
+            Some(overlapped) => overlapped,
+            None => std::ptr::null(),
+        };
+
+        unsafe {
+            match ExpandVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
