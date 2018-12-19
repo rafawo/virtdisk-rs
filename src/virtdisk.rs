@@ -49,7 +49,7 @@ impl VirtualDisk {
 
         let parameters_ptr = match parameters {
             Some(parameters) => &parameters,
-            _ => std::ptr::null(),
+            None => std::ptr::null(),
         };
 
         unsafe {
@@ -86,12 +86,12 @@ impl VirtualDisk {
 
         let security_descriptor_ptr = match security_descriptor {
             Some(security_descriptor) => &security_descriptor,
-            _ => std::ptr::null(),
+            None => std::ptr::null(),
         };
 
         let overlapped_ptr = match overlapped {
             Some(overlapped) => &overlapped,
-            _ => std::ptr::null(),
+            None => std::ptr::null(),
         };
 
         unsafe {
@@ -125,12 +125,12 @@ impl VirtualDisk {
     ) -> Result<(), DWord> {
         let security_descriptor_ptr = match security_descriptor {
             Some(security_descriptor) => &security_descriptor,
-            _ => std::ptr::null(),
+            None => std::ptr::null(),
         };
 
         let overlapped_ptr = match overlapped {
             Some(overlapped) => &overlapped,
-            _ => std::ptr::null(),
+            None => std::ptr::null(),
         };
 
         unsafe {
@@ -142,6 +142,17 @@ impl VirtualDisk {
                 parameters,
                 overlapped_ptr,
             ) {
+                result if result == 0 => Ok(()),
+                result => Err(result),
+            }
+        }
+    }
+
+    /// Detaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
+    /// by locating an appropriate virtual disk provider to accomplish the operation.
+    pub fn detach(&self, flags: u32, provider_specific_flags: u64) -> Result<(), DWord> {
+        unsafe {
+            match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
                 result if result == 0 => Ok(()),
                 result => Err(result),
             }
