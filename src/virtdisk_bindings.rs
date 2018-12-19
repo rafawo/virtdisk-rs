@@ -56,8 +56,8 @@ extern "C" {
         objectHandle: Handle,
         flags: u32, // storage_dependency::GetFlag
         storageDependencyInfoSize: u64,
-        storageDependencyInfo: *const storage_dependency::Info,
-        sizeUsed: *const u64,
+        storageDependencyInfo: *mut storage_dependency::Info,
+        sizeUsed: *mut u64,
     ) -> DWord;
 
     pub fn GetVirtualDiskInformation(
