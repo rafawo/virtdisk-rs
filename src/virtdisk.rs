@@ -417,4 +417,19 @@ impl VirtualDisk {
             }
         }
     }
+
+    /// Sets a metadata item for a virtual disk.
+    pub fn set_metadata(&self, item: &Guid, buffer: &[u8]) -> Result<(), ResultCode> {
+        unsafe {
+            match SetVirtualDiskMetadata(
+                self.handle,
+                item,
+                buffer.len() as u64,
+                buffer.as_ptr() as *const Void,
+            ) {
+                result if result == 0 => Ok(()),
+                result => Err(error_code_to_result_code(result)),
+            }
+        }
+    }
 }
