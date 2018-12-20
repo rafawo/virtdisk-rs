@@ -7,6 +7,8 @@ This project is a collection of Rust libraries that wrap functionality exposed b
 
 VirtDisk APIs are part of the [Windows 10 SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk).
 
+**NOTE:This crate is untested and simply provides the C bindings and safe Rust abstractions. Fixes might come at later updates to the crate. There is no plan for now to create a fully suited integration test for the APIs.**
+
 ## Requirements
 
 For this wrapper to build properly, the following requirements need to be met by the building machine:
@@ -23,3 +25,23 @@ The relevant Windows 10 SDK files that this project is wrapping are:
 - C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um\virtdisk.h
 - C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0\um\x64\virtdisk.lib
 - C:\Windows\System32\virtdisk.dll
+
+## How to use locally
+
+Clone the repo to a folder:
+
+```
+git clone https://github.com/rafawo/virtdisk-rs.git
+```
+
+Make sure the machine where you are building has Windows 10 SDK version Windows 10 SDK version **10.0.17763.132** installed. Then run:
+
+```
+cd virtdisk-rs
+cargo build
+```
+
+Finally, open documentation by running:
+```
+cargo doc --open
+```

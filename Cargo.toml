@@ -7,7 +7,7 @@ edition = "2018"
 description = "Rust abstractions for VirtDisk APIs."
 repository = "https://github.com/rafawo/virtdisk-rs"
 readme = "README.md"
-keywords = ["windows", "virtdisk"]
+keywords = ["windows", "virtdisk", "vhd", "hyper-v", "virtualization"]
 categories = ["api-bindings", "os::windows-apis"]
 build = "build.rs"
 
