@@ -7,7 +7,7 @@ This project is a collection of Rust libraries that wrap functionality exposed b
 
 VirtDisk APIs are part of the [Windows 10 SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk).
 
-**NOTE:This crate is untested and simply provides the C bindings and safe Rust abstractions. Fixes might come at later updates to the crate. There is no plan for now to create a fully suited integration test for the APIs.**
+**NOTE:This crate is untested and simply provides safe Rust abstractions to the virtdisk C bindings. Fixes might come at later updates to the crate. There is no plan for now to create a fully suited integration test for the APIs.**
 
 ## Requirements
 

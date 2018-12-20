@@ -6,9 +6,6 @@
 //!
 //! VirtDisk APIs are part of the [Windows 10 SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk).
 //!
-//! Both the FFI bindings and Rust wrappers are public to this crate, to give flexibility
-//! to consumer code to use the bindings directly as they see fit or the rust wrappers for safe abstractions.
-//!
 //! # Requirements
 //!
 //! For this wrapper to build properly, the following requirements need to be met by the building machine:
@@ -28,7 +25,7 @@
 //!
 
 pub mod virtdisk;
-pub mod virtdisk_bindings;
+pub(crate) mod virtdisk_bindings;
 pub mod virtdiskdefs;
 
 pub mod windefs {

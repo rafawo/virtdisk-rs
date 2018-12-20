@@ -35,7 +35,7 @@ fn error_code_to_result_code(error_code: DWord) -> ResultCode {
 }
 
 /// Safe abstraction to a virtual hard disk handle.
-/// Additionally, provides the entry point to all save wrappers to the virtdisk C bindings.
+/// Additionally, provides the entry point to all safe wrappers to the virtdisk C bindings.
 pub struct VirtualDisk {
     handle: Handle,
 }
