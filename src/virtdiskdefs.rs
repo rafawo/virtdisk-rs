@@ -3,7 +3,7 @@
 use crate::windefs::*;
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct VirtualStorageType {
     pub device_id: u64,
     pub vendor_id: Guid,
@@ -11,18 +11,18 @@ pub struct VirtualStorageType {
 
 /// {00000000-0000-0000-0000-000000000000}
 pub const VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN: Guid = Guid {
-    data1: 0x00000000,
-    data2: 0x0000,
-    data3: 0x0000,
-    data4: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+    Data1: 0x00000000,
+    Data2: 0x0000,
+    Data3: 0x0000,
+    Data4: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
 };
 
 /// {EC984AEC-A0F9-47e9-901F-71415A66345B}
 pub const VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT: Guid = Guid {
-    data1: 0xec984aec,
-    data2: 0xa0f9,
-    data3: 0x47e9,
-    data4: [0x90, 0x1f, 0x71, 0x41, 0x5a, 0x66, 0x34, 0x5b],
+    Data1: 0xec984aec,
+    Data2: 0xa0f9,
+    Data3: 0x47e9,
+    Data4: [0x90, 0x1f, 0x71, 0x41, 0x5a, 0x66, 0x34, 0x5b],
 };
 
 pub const VIRTUAL_STORAGE_TYPE_DEVICE_UNKNOWN: u32 = 0;
@@ -71,7 +71,7 @@ pub mod open_virtual_disk {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version2 {
         pub get_info_only: Bool,
         pub read_only: Bool,
@@ -79,7 +79,7 @@ pub mod open_virtual_disk {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version3 {
         pub get_info_only: Bool,
         pub read_only: Bool,
@@ -172,7 +172,7 @@ pub mod create_virtual_disk {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version1 {
         pub unique_id: Guid,
         pub maximum_size: u64,
@@ -183,7 +183,7 @@ pub mod create_virtual_disk {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version2 {
         pub unique_id: Guid,
         pub maximum_size: u64,
@@ -198,7 +198,7 @@ pub mod create_virtual_disk {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version3 {
         pub unique_id: Guid,
         pub maximum_size: u64,
@@ -215,7 +215,7 @@ pub mod create_virtual_disk {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version4 {
         pub unique_id: Guid,
         pub maximum_size: u64,
@@ -424,7 +424,7 @@ pub mod storage_dependency {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct InfoVersion1 {
         pub dependency_type_flags: u32, // DependentDiskFlag
         pub provider_specific_flags: u64,
@@ -432,7 +432,7 @@ pub mod storage_dependency {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct InfoVersion2 {
         pub dependency_type_flags: u32, // DependentDiskFlag
         pub provider_specific_flags: u64,
@@ -511,7 +511,7 @@ pub mod get_virtual_disk {
     #[derive(Debug, Copy, Clone)]
     pub struct InfoParentLocation {
         pub parent_resolved: Bool,
-        pub parent_location_buffer: [libc::wchar_t; 1],
+        pub parent_location_buffer: [WChar; 1],
     }
 
     #[repr(C)]
@@ -527,7 +527,7 @@ pub mod get_virtual_disk {
     pub struct InfoChangeTrackingState {
         pub enabled: Bool,
         pub newer_changes: Bool,
-        pub most_recent_id: [libc::wchar_t; 1],
+        pub most_recent_id: [WChar; 1],
     }
 
     #[repr(C)]
@@ -583,7 +583,7 @@ pub mod set_virtual_disk {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct InfoParentLocator {
         pub linkage_id: Guid,
         pub parent_file_path: PCWStr,
@@ -839,7 +839,7 @@ pub mod take_snapshot_vhdset {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version1 {
         pub snapshot_id: Guid,
     }
@@ -876,7 +876,7 @@ pub mod delete_snapshot_vhdset {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version1 {
         pub snapshot_id: Guid,
     }
@@ -915,7 +915,7 @@ pub mod modify_vhdset {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct SnapshotPath {
         pub snapshot_id: Guid,
         pub snapshot_file_path: PCWStr,
@@ -955,7 +955,7 @@ pub mod apply_snapshot_vhdset {
     }
 
     #[repr(C)]
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Copy, Clone)]
     pub struct Version1 {
         pub snapshot_id: Guid,
         pub leaf_snapshot_id: Guid,
@@ -996,14 +996,14 @@ pub mod raw_scsi_virtual_disk {
     #[derive(Debug, Copy, Clone)]
     pub struct Version1 {
         pub rsvd_handle: Bool,
-        pub data_in: libc::c_uchar,
-        pub cdb_length: libc::c_uchar,
-        pub sense_info_length: libc::c_uchar,
+        pub data_in: UChar,
+        pub cdb_length: UChar,
+        pub sense_info_length: UChar,
         pub srb_flags: u64,
         pub data_transfer_length: u64,
         pub data_buffer: *mut Void,
-        pub sense_info: *mut libc::c_uchar,
-        pub cdb: *mut libc::c_uchar,
+        pub sense_info: *mut UChar,
+        pub cdb: *mut UChar,
     }
 
     #[repr(C)]
@@ -1022,8 +1022,8 @@ pub mod raw_scsi_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct ResponseVersion1 {
-        pub scsi_status: libc::c_uchar,
-        pub sense_info_length: libc::c_uchar,
+        pub scsi_status: UChar,
+        pub sense_info_length: UChar,
         pub data_transfer_length: u64,
     }
 

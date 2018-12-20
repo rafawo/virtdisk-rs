@@ -50,13 +50,13 @@ impl std::ops::Drop for VirtualDisk {
         let mut result: Bool = 0;
 
         unsafe {
-            result = kernel32::CloseHandle(self.handle);
+            result = winapi::um::handleapi::CloseHandle(self.handle);
         }
 
         match result {
             result if result == 0 => {
                 panic!("Closing handle failed with error code {}", unsafe {
-                    kernel32::GetLastError()
+                    winapi::um::errhandlingapi::GetLastError()
                 });
             }
             _ => {}
@@ -223,7 +223,7 @@ impl VirtualDisk {
     /// Retrieves the path to the physical device object that contains a virtual hard disk (VHD) or CD or DVD image file (ISO).
     pub fn get_physical_path(&self) -> Result<String, ResultCode> {
         const PATH_SIZE: u64 = 256; // MAX_PATH
-        let mut disk_path_wstr: [libc::wchar_t; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
+        let mut disk_path_wstr: [WChar; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
         unsafe {
             match GetVirtualDiskPhysicalPath(self.handle, &PATH_SIZE, disk_path_wstr.as_mut_ptr()) {
@@ -239,7 +239,7 @@ impl VirtualDisk {
 
     /// Retrieves the physical paths to all attached virtual disks and returns it in a vector of strings.
     pub fn get_all_attached_physical_paths() -> Result<Vec<String>, ResultCode> {
-        let mut paths_buffer: Vec<libc::wchar_t> = Vec::new();
+        let mut paths_buffer: Vec<WChar> = Vec::new();
         let mut buffer_size_bytes: u64 = 0;
 
         let mut paths: Vec<String> = Vec::new();
@@ -253,8 +253,7 @@ impl VirtualDisk {
 
             match error_code_to_result_code(result) {
                 ResultCode::InsufficientBuffer => {
-                    let buffer_size =
-                        buffer_size_bytes as usize / std::mem::size_of::<libc::wchar_t>();
+                    let buffer_size = buffer_size_bytes as usize / std::mem::size_of::<WChar>();
                     paths_buffer.resize(buffer_size, 0);
 
                     match GetAllAttachedVirtualDiskPhysicalPaths(
@@ -263,7 +262,7 @@ impl VirtualDisk {
                     ) {
                         result if result == 0 => {
                             assert_eq!(
-                                buffer_size * std::mem::size_of::<libc::wchar_t>(),
+                                buffer_size * std::mem::size_of::<WChar>(),
                                 buffer_size_bytes as usize
                             );
 
@@ -352,10 +351,10 @@ impl VirtualDisk {
                     guids.resize(
                         vector_size as usize,
                         Guid {
-                            data1: 0,
-                            data2: 0,
-                            data3: 0,
-                            data4: [0; 8],
+                            Data1: 0,
+                            Data2: 0,
+                            Data3: 0,
+                            Data4: [0; 8],
                         },
                     );
 
