@@ -3,36 +3,8 @@
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
+use crate::{error_code_to_result_code, ResultCode};
 use widestring::{WideCString, WideStr, WideString};
-
-/// Enumeration of common error codes returned from the virtdisk APIs.
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ResultCode {
-    Success,
-    InvalidParameter,
-    UnsupportedCompression,
-    FileEncrypted,
-    FileSystemLimitation,
-    FileCorrupt,
-    FileNotFound,
-    InsufficientBuffer,
-    WindowsErrorCode(DWord),
-}
-
-fn error_code_to_result_code(error_code: DWord) -> ResultCode {
-    match error_code {
-        0 => ResultCode::Success,
-        87 => ResultCode::InvalidParameter,
-        618 => ResultCode::UnsupportedCompression,
-        6002 => ResultCode::FileEncrypted,
-        665 => ResultCode::FileSystemLimitation,
-        1392 => ResultCode::FileCorrupt,
-        2 => ResultCode::FileNotFound,
-        122 => ResultCode::InsufficientBuffer,
-        error_code => ResultCode::WindowsErrorCode(error_code),
-    }
-}
 
 /// Safe abstraction to a virtual hard disk handle.
 /// Additionally, provides the entry point to all safe wrappers to the virtdisk C bindings.

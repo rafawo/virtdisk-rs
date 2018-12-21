@@ -28,6 +28,9 @@ pub mod virtdisk;
 pub(crate) mod virtdisk_bindings;
 pub mod virtdiskdefs;
 
+pub mod diskutilities;
+pub mod vhdutilities;
+
 pub mod windefs {
     //! Defines type aliases for Windows Definitions to user Rust naming conventions
     //! throughout the crate.
@@ -47,4 +50,40 @@ pub mod windefs {
     pub type Acl = winapi::um::winnt::ACL;
     pub type SecurityDescriptor = winapi::um::winnt::SECURITY_DESCRIPTOR;
     pub type Overlapped = winapi::um::minwinbase::OVERLAPPED;
+
+    pub const GUID_NULL: Guid = Guid {
+        Data1: 0x00000000,
+        Data2: 0x0000,
+        Data3: 0x0000,
+        Data4: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+    };
+}
+
+/// Enumeration of common error codes returned from the virtdisk APIs.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ResultCode {
+    Success,
+    InvalidParameter,
+    UnsupportedCompression,
+    FileEncrypted,
+    FileSystemLimitation,
+    FileCorrupt,
+    FileNotFound,
+    InsufficientBuffer,
+    WindowsErrorCode(windefs::DWord),
+}
+
+pub(crate) fn error_code_to_result_code(error_code: windefs::DWord) -> ResultCode {
+    match error_code {
+        0 => ResultCode::Success,
+        87 => ResultCode::InvalidParameter,
+        618 => ResultCode::UnsupportedCompression,
+        6002 => ResultCode::FileEncrypted,
+        665 => ResultCode::FileSystemLimitation,
+        1392 => ResultCode::FileCorrupt,
+        2 => ResultCode::FileNotFound,
+        122 => ResultCode::InsufficientBuffer,
+        error_code => ResultCode::WindowsErrorCode(error_code),
+    }
 }
