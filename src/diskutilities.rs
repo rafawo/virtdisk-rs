@@ -138,8 +138,96 @@ impl Disk {
         }
     }
 
-    pub fn volume_path(&self) -> String {
-        String::new()
+    /// Retrieves the path to the first volume on a disk, waiting for the volumes to arrive
+    /// if the have not yet.
+    pub fn volume_path(&self) -> Result<String, ResultCode> {
+        use rsevents::Awaitable;
+        use winapi::um::{cfgmgr32, winioctl};
+
+        let mut filter = unsafe { std::mem::zeroed::<cfgmgr32::CM_NOTIFY_FILTER>() };
+        filter.cbSize = std::mem::size_of::<cfgmgr32::CM_NOTIFY_FILTER>() as DWord;
+        filter.FilterType = cfgmgr32::CM_NOTIFY_FILTER_TYPE_DEVICEINTERFACE;
+        unsafe {
+            filter.u.DeviceInterface_mut().ClassGuid = winioctl::GUID_DEVINTERFACE_VOLUME;
+        }
+
+        let mut context = VolumeArrivalCallbackContext {
+            event: rsevents::AutoResetEvent::new(rsevents::State::Unset),
+            path_result: Ok(String::new()),
+            disk_handle: self.handle,
+        };
+
+        let cm_notification = CmNotification::register(
+            &mut filter,
+            &mut context as *mut _ as PVoid,
+            Some(volume_arrival_callback),
+        );
+
+        if let Err(error) = cm_notification {
+            return Err(error);
+        }
+
+        let mut volume_path = try_get_disk_volume_path(self.handle)?;
+
+        if volume_path.is_empty() {
+            pub const VOLUME_ARRIVAL_DEFAULT_FORCE_ONLINE_INTERVAL_MS: u64 = 10000; // 10 seconds
+            pub const VOLUME_ARRIVAL_DEFAULT_TIMEOUT_MS: u64 = 60000; // 1 minute
+            let force_online_interval = VOLUME_ARRIVAL_DEFAULT_FORCE_ONLINE_INTERVAL_MS;
+            let volume_arrival_timeout = VOLUME_ARRIVAL_DEFAULT_TIMEOUT_MS;
+            let mut time_waited: u64 = 0;
+
+            //
+            // wait for a volume to arrive
+            //
+            // Periodically attempt to online the disk to work around a race condition:
+            //
+            // The disk device may have come online and notified partmgr
+            // to that process. If the disk had a conflicting disk or partition
+            // signature, then partmgr may have kept the disk offline.
+            // MountVhd (which is what kicks off the mount) attempts to force online
+            // the disk, but that can actually race with partmgr handling the
+            // disk arrival notification.
+            //
+            // So, if the user asks for the volume path, then:
+            // 1. Always attempt to bring the disk online. If the disk is already online
+            //      then this is a noop. If the disk is currently offline, then this could
+            //      be racing with the online process described above.
+            // 2. Wait for a small period of time.
+            // 3. If the disk still isn't online, attempt to online it again, in case the bit
+            //      above raced.
+            // 4. Keep doing this until the volume comes online, or until we reach the timeout.
+            //
+            loop {
+                let _result = force_online_disk(self.handle);
+
+                if context
+                    .event
+                    .wait_for(std::time::Duration::from_millis(force_online_interval))
+                {
+                    volume_path = match context.path_result {
+                        Ok(path) => path,
+                        Err(error) => return Err(error),
+                    };
+
+                    if volume_path.is_empty() {
+                        return Err(ResultCode::FileNotFound);
+                    }
+
+                    break;
+                }
+
+                time_waited += volume_arrival_timeout;
+
+                if time_waited >= volume_arrival_timeout {
+                    break;
+                }
+            }
+        }
+
+        match force_online_volume(&volume_path) {
+            Ok(()) => Ok(volume_path),
+            Err(error) => Err(error),
+        }
     }
 
     pub fn format(&self, file_system: &str) -> PartitionInfo {
@@ -159,7 +247,9 @@ impl Disk {
 pub fn force_online_disk(handle: Handle) -> Result<(), ResultCode> {
     let mut disk = Disk { handle };
     let result = disk.force_online();
-    unsafe { disk.release_handle(); }
+    unsafe {
+        disk.release_handle();
+    }
     result
 }
 
@@ -381,16 +471,16 @@ struct VolumeArrivalCallbackContext {
 
 /// The callback called when a new volume arrives in the system. Checks to see if the volume
 /// we are looking for has arrived yet (i.e. if this is the correct one) and signals the waiter if so.
-pub fn volume_arrival_callback(
+#[no_mangle]
+unsafe extern "system" fn volume_arrival_callback(
     _: winapi::um::cfgmgr32::HCMNOTIFICATION,
     context: PVoid,
     action: winapi::um::cfgmgr32::CM_NOTIFY_ACTION,
-    _: winapi::um::cfgmgr32::PCM_NOTIFY_ACTION,
+    _: winapi::um::cfgmgr32::PCM_NOTIFY_EVENT_DATA,
     _: DWord,
 ) -> DWord {
     if action == winapi::um::cfgmgr32::CM_NOTIFY_ACTION_DEVICEINTERFACEARRIVAL {
-        let mut callback_context: VolumeArrivalCallbackContext =
-            unsafe { std::ptr::read(context as *mut _) };
+        let mut callback_context: VolumeArrivalCallbackContext = std::ptr::read(context as *mut _);
         callback_context.path_result = try_get_disk_volume_path(callback_context.disk_handle);
 
         match callback_context.path_result {
@@ -401,4 +491,67 @@ pub fn volume_arrival_callback(
     }
 
     winapi::shared::winerror::ERROR_SUCCESS
+}
+
+#[link(name = "cfgmgr32")]
+extern "C" {
+    pub fn CM_Register_Notification(
+        pFilter: winapi::um::cfgmgr32::PCM_NOTIFY_FILTER,
+        pContext: PVoid,
+        pCallback: winapi::um::cfgmgr32::PCM_NOTIFY_CALLBACK,
+        pNotifyContex: winapi::um::cfgmgr32::PHCMNOTIFICATION,
+    ) -> winapi::um::cfgmgr32::CONFIGRET;
+
+    pub fn CM_Unregister_Notification(
+        NotifyContext: winapi::um::cfgmgr32::HCMNOTIFICATION,
+    ) -> winapi::um::cfgmgr32::CONFIGRET;
+
+    pub fn CM_MapCrToWin32Err(
+        CmReturnCode: winapi::um::cfgmgr32::CONFIGRET,
+        DefaultErr: DWord,
+    ) -> DWord;
+}
+
+struct CmNotification {
+    handle: winapi::um::cfgmgr32::HCMNOTIFICATION,
+}
+
+impl std::ops::Drop for CmNotification {
+    fn drop(&mut self) {
+        unsafe {
+            match CM_Unregister_Notification(self.handle) {
+                error if error != winapi::um::cfgmgr32::CR_SUCCESS => {
+                    let error_code =
+                        CM_MapCrToWin32Err(error, winapi::shared::winerror::ERROR_GEN_FAILURE);
+                    panic!(
+                        "Failed to unregister CM Notification with error code {}",
+                        error_code
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+impl CmNotification {
+    pub fn register(
+        filter: winapi::um::cfgmgr32::PCM_NOTIFY_FILTER,
+        context: PVoid,
+        callback: winapi::um::cfgmgr32::PCM_NOTIFY_CALLBACK,
+    ) -> Result<CmNotification, ResultCode> {
+        unsafe {
+            let mut handle = std::mem::zeroed::<winapi::um::cfgmgr32::HCMNOTIFICATION>();
+
+            match CM_Register_Notification(filter, context, callback, &mut handle) {
+                error if error != winapi::um::cfgmgr32::CR_SUCCESS => {
+                    Err(error_code_to_result_code(CM_MapCrToWin32Err(
+                        error,
+                        winapi::shared::winerror::ERROR_GEN_FAILURE,
+                    )))
+                }
+                _ => Ok(CmNotification { handle }),
+            }
+        }
+    }
 }

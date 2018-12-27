@@ -75,6 +75,7 @@ pub enum ResultCode {
     FileCorrupt,
     FileNotFound,
     InsufficientBuffer,
+    Timeout,
     WindowsErrorCode(windefs::DWord),
 }
 
@@ -88,6 +89,7 @@ pub(crate) fn error_code_to_result_code(error_code: windefs::DWord) -> ResultCod
         1392 => ResultCode::FileCorrupt,
         2 => ResultCode::FileNotFound,
         122 => ResultCode::InsufficientBuffer,
+        1460 => ResultCode::Timeout,
         error_code => ResultCode::WindowsErrorCode(error_code),
     }
 }
@@ -131,7 +133,7 @@ pub(crate) mod win_wrappers {
             None => std::ptr::null_mut(),
         };
 
-        let mut template_file_handle = match template_file {
+        let template_file_handle = match template_file {
             Some(template_file) => template_file,
             None => std::ptr::null_mut(),
         };
