@@ -14,25 +14,7 @@ pub struct VirtualDisk {
 
 impl std::ops::Drop for VirtualDisk {
     fn drop(&mut self) {
-        if self.handle == std::ptr::null_mut() {
-            return;
-        }
-
-        #[allow(unused_assignments)]
-        let mut result: Bool = 0;
-
-        unsafe {
-            result = winapi::um::handleapi::CloseHandle(self.handle);
-        }
-
-        match result {
-            result if result == 0 => {
-                panic!("Closing handle failed with error code {}", unsafe {
-                    winapi::um::errhandlingapi::GetLastError()
-                });
-            }
-            _ => {}
-        }
+        crate::win_wrappers::close_handle(&mut self.handle);
     }
 }
 

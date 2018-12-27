@@ -41,25 +41,7 @@ pub struct Disk {
 
 impl std::ops::Drop for Disk {
     fn drop(&mut self) {
-        if self.handle == std::ptr::null_mut() {
-            return;
-        }
-
-        #[allow(unused_assignments)]
-        let mut result: Bool = 0;
-
-        unsafe {
-            result = winapi::um::handleapi::CloseHandle(self.handle);
-        }
-
-        match result {
-            result if result == 0 => {
-                panic!("Closing handle failed with error code {}", unsafe {
-                    winapi::um::errhandlingapi::GetLastError()
-                });
-            }
-            _ => {}
-        }
+        crate::win_wrappers::close_handle(&mut self.handle);
     }
 }
 
@@ -97,7 +79,7 @@ impl Disk {
     /// a volume path (e.g. \\?\Volume{4c1b02c1-d990-11dc-99ae-806e6f6e6963}\)
     /// or a device path (\\?\scsi#disk&ven_mtfddak1&prod_28mam-1j1#4.....)
     pub fn open(disk_path: &str, access_mask: Option<DWord>) -> Result<Disk, ResultCode> {
-        use winapi::um::{fileapi, winbase, winnt};
+        use winapi::um::{fileapi, winnt};
 
         let access_mask_flags = match access_mask {
             Some(flags) => flags,
@@ -110,28 +92,21 @@ impl Disk {
             normalized_disk_path.pop();
         }
 
-        unsafe {
-            let handle = fileapi::CreateFileW(
-                widestring::WideCString::from_str(normalized_disk_path.as_str())
-                    .unwrap()
-                    .as_ptr(),
-                access_mask_flags,
-                winnt::FILE_SHARE_READ | winnt::FILE_SHARE_WRITE,
-                std::ptr::null_mut(),
-                fileapi::OPEN_EXISTING,
-                winnt::FILE_ATTRIBUTE_NORMAL | winbase::FILE_FLAG_NO_BUFFERING,
-                std::ptr::null_mut(),
-            );
-
-            match handle {
-                handle if handle != std::ptr::null_mut() => Ok(Disk { handle }),
-                _handle => Err(ResultCode::FileNotFound),
-            }
+        match crate::win_wrappers::create_file(
+            normalized_disk_path.as_str(),
+            access_mask_flags,
+            winnt::FILE_SHARE_READ | winnt::FILE_SHARE_WRITE,
+            None,
+            fileapi::OPEN_EXISTING,
+            winnt::FILE_ATTRIBUTE_NORMAL,
+            None,
+        ) {
+            Ok(handle) => Ok(Disk { handle }),
+            Err(error) => Err(error),
         }
     }
 
-    /// Force a volume to be brought online (ie: mounted by a filesystem).
-    /// This is needed when automount has been disabled (mountvol /N).
+    /// Force the disk to be brought online and surface its volumes.
     pub fn force_online(&self) -> Result<(), ResultCode> {
         const SET_DISK_ATTRIBUTES_SIZE: DWord = std::mem::size_of::<SetDiskAttributes>() as DWord;
 
@@ -177,5 +152,70 @@ impl Disk {
 
     pub fn expand_volume(&self) -> bool {
         true
+    }
+}
+
+/// Force a volume to be brought online (ie: mounted by a filesystem).
+/// This is needed when automount has been disabled (mountvol /N).
+pub fn force_online_volume(volume_name: &str) -> Result<(), ResultCode> {
+    use winapi::um::{fileapi, ioapiset, winioctl, winnt};
+
+    match crate::win_wrappers::create_file(
+        volume_name,
+        winnt::GENERIC_READ | winnt::GENERIC_WRITE,
+        winnt::FILE_SHARE_READ | winnt::FILE_SHARE_WRITE,
+        None,
+        fileapi::OPEN_EXISTING,
+        winnt::FILE_ATTRIBUTE_NORMAL,
+        None,
+    ) {
+        Ok(handle) => {
+            let mut bytes: DWord = 0;
+            let mut handle = handle;
+
+            unsafe {
+                match ioapiset::DeviceIoControl(
+                    handle,
+                    winioctl::IOCTL_VOLUME_OFFLINE,
+                    std::ptr::null_mut(),
+                    0,
+                    std::ptr::null_mut(),
+                    0,
+                    &mut bytes,
+                    std::ptr::null_mut(),
+                ) {
+                    0 => {
+                        match ioapiset::DeviceIoControl(
+                            handle,
+                            winioctl::IOCTL_VOLUME_ONLINE,
+                            std::ptr::null_mut(),
+                            0,
+                            std::ptr::null_mut(),
+                            0,
+                            &mut bytes,
+                            std::ptr::null_mut(),
+                        ) {
+                            0 => {
+                                crate::win_wrappers::close_handle(&mut handle);
+                                Ok(())
+                            }
+                            _ => {
+                                crate::win_wrappers::close_handle(&mut handle);
+                                Err(error_code_to_result_code(
+                                    winapi::um::errhandlingapi::GetLastError(),
+                                ))
+                            }
+                        }
+                    }
+                    _ => {
+                        crate::win_wrappers::close_handle(&mut handle);
+                        Err(error_code_to_result_code(
+                            winapi::um::errhandlingapi::GetLastError(),
+                        ))
+                    }
+                }
+            }
+        }
+        Err(error) => Err(error),
     }
 }
