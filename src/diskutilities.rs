@@ -155,6 +155,14 @@ impl Disk {
     }
 }
 
+/// Forces the disk to be brought online and surface its volumes.
+pub fn force_online_disk(handle: Handle) -> Result<(), ResultCode> {
+    let mut disk = Disk { handle };
+    let result = disk.force_online();
+    unsafe { disk.release_handle(); }
+    result
+}
+
 struct Volume {
     handle: Handle,
 }
@@ -276,6 +284,7 @@ impl std::ops::Drop for SafeFindVolumeHandle {
 }
 
 /// Tries to get the volume path of the volume in a disk.
+/// Returns an empty string if the volume is not found.
 fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
     use winapi::um::{fileapi, ioapiset, winioctl};
 
@@ -360,5 +369,36 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
         }
     }
 
-    Err(ResultCode::FileNotFound)
+    Ok(String::new())
+}
+
+/// Context structure used for asynchronous volume arrival.
+struct VolumeArrivalCallbackContext {
+    event: rsevents::AutoResetEvent,
+    path_result: Result<String, ResultCode>,
+    disk_handle: Handle,
+}
+
+/// The callback called when a new volume arrives in the system. Checks to see if the volume
+/// we are looking for has arrived yet (i.e. if this is the correct one) and signals the waiter if so.
+pub fn volume_arrival_callback(
+    _: winapi::um::cfgmgr32::HCMNOTIFICATION,
+    context: PVoid,
+    action: winapi::um::cfgmgr32::CM_NOTIFY_ACTION,
+    _: winapi::um::cfgmgr32::PCM_NOTIFY_ACTION,
+    _: DWord,
+) -> DWord {
+    if action == winapi::um::cfgmgr32::CM_NOTIFY_ACTION_DEVICEINTERFACEARRIVAL {
+        let mut callback_context: VolumeArrivalCallbackContext =
+            unsafe { std::ptr::read(context as *mut _) };
+        callback_context.path_result = try_get_disk_volume_path(callback_context.disk_handle);
+
+        match callback_context.path_result {
+            Ok(ref path) if !path.is_empty() => callback_context.event.set(),
+            Err(_) => callback_context.event.set(),
+            _ => {}
+        }
+    }
+
+    winapi::shared::winerror::ERROR_SUCCESS
 }

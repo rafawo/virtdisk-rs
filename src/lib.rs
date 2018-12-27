@@ -45,6 +45,7 @@ pub mod windefs {
     pub type PWStr = winapi::shared::ntdef::PWSTR;
     pub type UChar = winapi::shared::ntdef::UCHAR;
     pub type Void = winapi::shared::ntdef::VOID;
+    pub type PVoid = winapi::shared::ntdef::PVOID;
     pub type LPVoid = winapi::shared::minwindef::LPVOID;
     pub type WChar = winapi::shared::ntdef::WCHAR;
     pub type Word = winapi::shared::minwindef::WORD;
