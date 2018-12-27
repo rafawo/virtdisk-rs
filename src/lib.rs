@@ -36,13 +36,16 @@ pub mod windefs {
     //! throughout the crate.
 
     pub type Bool = winapi::shared::minwindef::BOOL;
+    pub type Boolean = winapi::shared::ntdef::BOOLEAN;
     pub type Byte = winapi::shared::minwindef::BYTE;
     pub type DWord = winapi::shared::minwindef::DWORD;
+    pub type DWordLong = winapi::shared::ntdef::DWORDLONG;
     pub type Handle = winapi::shared::ntdef::HANDLE;
     pub type PCWStr = winapi::shared::ntdef::PCWSTR;
     pub type PWStr = winapi::shared::ntdef::PWSTR;
     pub type UChar = winapi::shared::ntdef::UCHAR;
     pub type Void = winapi::shared::ntdef::VOID;
+    pub type LPVoid = winapi::shared::minwindef::LPVOID;
     pub type WChar = winapi::shared::ntdef::WCHAR;
     pub type Word = winapi::shared::minwindef::WORD;
 

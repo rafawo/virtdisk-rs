@@ -13,4 +13,4 @@ build = "build.rs"
 
 [dependencies]
 widestring = "0.4.0"
-winapi = { version = "0.3.6", features = ["winbase", "handleapi", "errhandlingapi"] }
+winapi = { version = "0.3.6", features = ["winbase", "handleapi", "errhandlingapi", "winioctl", "ioapiset"] }

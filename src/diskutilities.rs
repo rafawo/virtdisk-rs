@@ -9,6 +9,31 @@ pub struct PartitionInfo {
     partition_id: Guid,
 }
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct SetDiskAttributes {
+    /// Specifies the size of the structure for versioning.
+    pub version: DWord,
+
+    /// Indicates whether to remember these settings across reboots or not.
+    pub persist: Boolean,
+
+    /// Reserved. Must set to zero.
+    pub reserved1: [Byte; 3],
+
+    /// Specifies the new attributes.
+    pub attributes: DWordLong,
+
+    /// Specifies the attributes that are being modified.
+    pub attributes_mask: DWordLong,
+
+    /// Reserved. Must set to zero.
+    pub reserved2: [DWord; 4],
+}
+
+pub const DISK_ATTRIBUTE_OFFLINE: u64 = 0x0000000000000001;
+pub const DISK_ATTRIBUTE_READ_ONLY: u64 = 0x0000000000000002;
+
 /// Safe abstraction to a disk handle.
 pub struct Disk {
     handle: Handle,
@@ -105,7 +130,38 @@ impl Disk {
         }
     }
 
-    pub fn force_online(&self) {}
+    /// Force a volume to be brought online (ie: mounted by a filesystem).
+    /// This is needed when automount has been disabled (mountvol /N).
+    pub fn force_online(&self) -> Result<(), ResultCode> {
+        const SET_DISK_ATTRIBUTES_SIZE: DWord = std::mem::size_of::<SetDiskAttributes>() as DWord;
+
+        let mut params = SetDiskAttributes {
+            version: SET_DISK_ATTRIBUTES_SIZE,
+            persist: 0,
+            reserved1: [0; 3],
+            attributes: 0,
+            attributes_mask: DISK_ATTRIBUTE_OFFLINE | DISK_ATTRIBUTE_READ_ONLY,
+            reserved2: [0; 4],
+        };
+
+        unsafe {
+            match winapi::um::ioapiset::DeviceIoControl(
+                self.handle,
+                winapi::um::winioctl::IOCTL_DISK_SET_DISK_ATTRIBUTES,
+                &mut params as *mut _ as LPVoid,
+                SET_DISK_ATTRIBUTES_SIZE,
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            ) {
+                0 => Ok(()),
+                _ => Err(error_code_to_result_code(
+                    winapi::um::errhandlingapi::GetLastError(),
+                )),
+            }
+        }
+    }
 
     pub fn volume_path(&self) -> String {
         String::new()
