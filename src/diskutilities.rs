@@ -141,7 +141,6 @@ impl Disk {
     /// Retrieves the path to the first volume on a disk, waiting for the volumes to arrive
     /// if the have not yet.
     pub fn volume_path(&self) -> Result<String, ResultCode> {
-        use rsevents::Awaitable;
         use winapi::um::{cfgmgr32, winioctl};
 
         let mut filter = unsafe { std::mem::zeroed::<cfgmgr32::CM_NOTIFY_FILTER>() };
@@ -152,7 +151,7 @@ impl Disk {
         }
 
         let mut context = VolumeArrivalCallbackContext {
-            event: rsevents::AutoResetEvent::new(rsevents::State::Unset),
+            event: WinEvent::create(false, false, None, None).unwrap(),
             path_result: Ok(String::new()),
             disk_handle: self.handle,
         };
@@ -170,11 +169,11 @@ impl Disk {
         let mut volume_path = try_get_disk_volume_path(self.handle)?;
 
         if volume_path.is_empty() {
-            pub const VOLUME_ARRIVAL_DEFAULT_FORCE_ONLINE_INTERVAL_MS: u64 = 10000; // 10 seconds
-            pub const VOLUME_ARRIVAL_DEFAULT_TIMEOUT_MS: u64 = 60000; // 1 minute
+            pub const VOLUME_ARRIVAL_DEFAULT_FORCE_ONLINE_INTERVAL_MS: DWord = 10000; // 10 seconds
+            pub const VOLUME_ARRIVAL_DEFAULT_TIMEOUT_MS: DWord = 60000; // 1 minute
             let force_online_interval = VOLUME_ARRIVAL_DEFAULT_FORCE_ONLINE_INTERVAL_MS;
             let volume_arrival_timeout = VOLUME_ARRIVAL_DEFAULT_TIMEOUT_MS;
-            let mut time_waited: u64 = 0;
+            let mut time_waited: DWord = 0;
 
             //
             // wait for a volume to arrive
@@ -200,10 +199,7 @@ impl Disk {
             loop {
                 let _result = force_online_disk(self.handle);
 
-                if context
-                    .event
-                    .wait_for(std::time::Duration::from_millis(force_online_interval))
-                {
+                if context.event.wait(force_online_interval) == WinEventResult::WaitObject0 {
                     volume_path = match context.path_result {
                         Ok(path) => path,
                         Err(error) => return Err(error),
@@ -464,7 +460,7 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
 
 /// Context structure used for asynchronous volume arrival.
 struct VolumeArrivalCallbackContext {
-    event: rsevents::AutoResetEvent,
+    event: WinEvent,
     path_result: Result<String, ResultCode>,
     disk_handle: Handle,
 }
@@ -483,10 +479,13 @@ unsafe extern "system" fn volume_arrival_callback(
         let mut callback_context: VolumeArrivalCallbackContext = std::ptr::read(context as *mut _);
         callback_context.path_result = try_get_disk_volume_path(callback_context.disk_handle);
 
-        match callback_context.path_result {
-            Ok(ref path) if !path.is_empty() => callback_context.event.set(),
-            Err(_) => callback_context.event.set(),
-            _ => {}
+        #[allow(unused_must_use)]
+        {
+            match callback_context.path_result {
+                Ok(ref path) if !path.is_empty() => callback_context.event.set(),
+                Err(_) => callback_context.event.set(),
+                Ok(_) => Ok(()),
+            };
         }
     }
 
@@ -551,6 +550,154 @@ impl CmNotification {
                     )))
                 }
                 _ => Ok(CmNotification { handle }),
+            }
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum WinEventResult {
+    WaitObject0,
+    WaitTimeout,
+    WaitFailed(ResultCode),
+}
+
+pub(crate) struct WinEvent {
+    pub handle: Handle,
+}
+
+impl std::ops::Drop for WinEvent {
+    fn drop(&mut self) {
+        crate::win_wrappers::close_handle(&mut self.handle);
+    }
+}
+
+impl WinEvent {
+    pub fn create(
+        manual_reset: bool,
+        initial_state: bool,
+        name: Option<&str>,
+        event_attributes: Option<winapi::um::minwinbase::SECURITY_ATTRIBUTES>,
+    ) -> Result<WinEvent, ResultCode> {
+        let event_attributes_ptr = match event_attributes {
+            Some(mut event_attributes) => &mut event_attributes,
+            None => std::ptr::null_mut(),
+        };
+
+        let name_wstr = match name {
+            Some(name) => widestring::WideCString::from_str(name).unwrap(),
+            None => widestring::WideCString::from_str("").unwrap(),
+        };
+
+        let name_ptr = match name {
+            Some(_) => name_wstr.as_ptr(),
+            None => std::ptr::null(),
+        };
+
+        let manual_reset: Bool = match manual_reset {
+            true => 1,
+            false => 0,
+        };
+
+        let initial_state: Bool = match initial_state {
+            true => 1,
+            false => 0,
+        };
+
+        unsafe {
+            match winapi::um::synchapi::CreateEventW(
+                event_attributes_ptr,
+                manual_reset,
+                initial_state,
+                name_ptr,
+            ) {
+                handle if handle != std::ptr::null_mut() => Ok(WinEvent { handle }),
+                _ => {
+                    return Err(error_code_to_result_code(
+                        winapi::um::errhandlingapi::GetLastError(),
+                    ))
+                }
+            }
+        }
+    }
+
+    pub fn open(
+        name: &str,
+        desired_access: DWord,
+        inherit_handle: bool,
+    ) -> Result<WinEvent, ResultCode> {
+        let inherit_handle: Bool = match inherit_handle {
+            true => 1,
+            false => 0,
+        };
+
+        unsafe {
+            match winapi::um::synchapi::OpenEventW(
+                desired_access,
+                inherit_handle,
+                widestring::WideCString::from_str(name).unwrap().as_ptr(),
+            ) {
+                handle if handle != std::ptr::null_mut() => Ok(WinEvent { handle }),
+                _ => {
+                    return Err(error_code_to_result_code(
+                        winapi::um::errhandlingapi::GetLastError(),
+                    ))
+                }
+            }
+        }
+    }
+
+    pub fn set(&self) -> Result<(), ResultCode> {
+        unsafe {
+            match winapi::um::synchapi::SetEvent(self.handle) {
+                result if result != 0 => {
+                    return Err(error_code_to_result_code(
+                        winapi::um::errhandlingapi::GetLastError(),
+                    ))
+                }
+                _ => Ok(()),
+            }
+        }
+    }
+
+    pub fn reset(&self) -> Result<(), ResultCode> {
+        unsafe {
+            match winapi::um::synchapi::ResetEvent(self.handle) {
+                result if result != 0 => {
+                    return Err(error_code_to_result_code(
+                        winapi::um::errhandlingapi::GetLastError(),
+                    ))
+                }
+                _ => Ok(()),
+            }
+        }
+    }
+
+    pub fn pulse(&self) -> Result<(), ResultCode> {
+        unsafe {
+            match winapi::um::winbase::PulseEvent(self.handle) {
+                result if result != 0 => {
+                    return Err(error_code_to_result_code(
+                        winapi::um::errhandlingapi::GetLastError(),
+                    ))
+                }
+                _ => Ok(()),
+            }
+        }
+    }
+
+    pub fn wait(&self, milliseconds: DWord) -> WinEventResult {
+        unsafe {
+            match winapi::um::synchapi::WaitForSingleObject(self.handle, milliseconds) {
+                winapi::um::winbase::WAIT_OBJECT_0 => WinEventResult::WaitObject0,
+                winapi::shared::winerror::WAIT_TIMEOUT => WinEventResult::WaitTimeout,
+                winapi::um::winbase::WAIT_FAILED => WinEventResult::WaitFailed(
+                    error_code_to_result_code(winapi::um::errhandlingapi::GetLastError()),
+                ),
+                _ => WinEventResult::WaitFailed(error_code_to_result_code(
+                    winapi::um::errhandlingapi::GetLastError(),
+                )),
             }
         }
     }
