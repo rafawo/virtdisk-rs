@@ -31,6 +31,8 @@ pub mod virtdiskdefs;
 pub mod diskutilities;
 pub mod vhdutilities;
 
+pub (crate) mod winutilities;
+
 pub mod windefs {
     //! Defines type aliases for Windows Definitions to user Rust naming conventions
     //! throughout the crate.
