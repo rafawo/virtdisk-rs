@@ -5,7 +5,7 @@ use crate::windefs::*;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct VirtualStorageType {
-    pub device_id: u64,
+    pub device_id: u32,
     pub vendor_id: Guid,
 }
 
@@ -67,7 +67,7 @@ pub mod open_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct Version1 {
-        pub rw_depth: u64,
+        pub rw_depth: u32,
     }
 
     #[repr(C)]
@@ -176,8 +176,8 @@ pub mod create_virtual_disk {
     pub struct Version1 {
         pub unique_id: Guid,
         pub maximum_size: u64,
-        pub block_size_in_bytes: u64,
-        pub sector_size_in_bytes: u64,
+        pub block_size_in_bytes: u32,
+        pub sector_size_in_bytes: u32,
         pub parent_path: PCWStr,
         pub source_path: PCWStr,
     }
@@ -187,8 +187,8 @@ pub mod create_virtual_disk {
     pub struct Version2 {
         pub unique_id: Guid,
         pub maximum_size: u64,
-        pub block_size_in_bytes: u64,
-        pub sector_size_in_bytes: u64,
+        pub block_size_in_bytes: u32,
+        pub sector_size_in_bytes: u32,
         pub parent_path: PCWStr,
         pub source_path: PCWStr,
         pub open_flags: u32, // OpenVirtualDiskFlag
@@ -202,8 +202,8 @@ pub mod create_virtual_disk {
     pub struct Version3 {
         pub unique_id: Guid,
         pub maximum_size: u64,
-        pub block_size_in_bytes: u64,
-        pub sector_size_in_bytes: u64,
+        pub block_size_in_bytes: u32,
+        pub sector_size_in_bytes: u32,
         pub parent_path: PCWStr,
         pub source_path: PCWStr,
         pub open_flags: u32, // OpenVirtualDiskFlag
@@ -219,8 +219,8 @@ pub mod create_virtual_disk {
     pub struct Version4 {
         pub unique_id: Guid,
         pub maximum_size: u64,
-        pub block_size_in_bytes: u64,
-        pub sector_size_in_bytes: u64,
+        pub block_size_in_bytes: u32,
+        pub sector_size_in_bytes: u32,
         pub parent_path: PCWStr,
         pub source_path: PCWStr,
         pub open_flags: u32, // OpenVirtualDiskFlag
@@ -320,7 +320,7 @@ pub mod attach_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct Version1 {
-        pub reserved: u64,
+        pub reserved: u32,
     }
 
     #[repr(C)]
@@ -427,7 +427,7 @@ pub mod storage_dependency {
     #[derive(Copy, Clone)]
     pub struct InfoVersion1 {
         pub dependency_type_flags: u32, // DependentDiskFlag
-        pub provider_specific_flags: u64,
+        pub provider_specific_flags: u32,
         pub virtual_storage_type: VirtualStorageType,
     }
 
@@ -435,9 +435,9 @@ pub mod storage_dependency {
     #[derive(Copy, Clone)]
     pub struct InfoVersion2 {
         pub dependency_type_flags: u32, // DependentDiskFlag
-        pub provider_specific_flags: u64,
+        pub provider_specific_flags: u32,
         pub virtual_storage_type: VirtualStorageType,
-        pub ancestor_level: u64,
+        pub ancestor_level: u32,
         pub dependency_device_name: PWStr,
         pub host_volume_name: PWStr,
         pub dependent_volume_name: PWStr,
@@ -455,7 +455,7 @@ pub mod storage_dependency {
     #[derive(Copy, Clone)]
     pub struct Info {
         pub version: InfoVersion,
-        pub number_entries: u64,
+        pub number_entries: u32,
         pub version_details: *mut InfoVersionDetails,
     }
 
@@ -503,8 +503,8 @@ pub mod get_virtual_disk {
     pub struct InfoSize {
         pub virtual_size: u64,
         pub physical_size: u64,
-        pub block_size: u64,
-        pub sector_size: u64,
+        pub block_size: u32,
+        pub sector_size: u32,
     }
 
     #[repr(C)]
@@ -517,8 +517,8 @@ pub mod get_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct InfoPhysicalDisk {
-        pub logical_sector_size: u64,
-        pub physical_sector_size: u64,
+        pub logical_sector_size: u32,
+        pub physical_sector_size: u32,
         pub is_remote: Bool,
     }
 
@@ -536,15 +536,15 @@ pub mod get_virtual_disk {
         pub size: InfoSize,
         pub parent_location: InfoParentLocation,
         pub parent_identifier: Guid,
-        pub parent_time_stamp: u64,
+        pub parent_time_stamp: u32,
         pub virtual_storage_type: VirtualStorageType,
-        pub provider_sub_type: u64,
+        pub provider_sub_type: u32,
         pub is_4k_aligned: Bool,
         pub is_loaded: Bool,
         pub physical_disk: InfoPhysicalDisk,
-        pub vhd_physical_sector_size: u64,
+        pub vhd_physical_sector_size: u32,
         pub smallest_safe_virtual_size: u64,
-        pub fragmentation_percentage: u64,
+        pub fragmentation_percentage: u32,
         pub virtual_disk_id: Guid,
         pub change_tracking_state: InfoChangeTrackingState,
     }
@@ -557,7 +557,7 @@ pub mod get_virtual_disk {
     }
 }
 
-pub const VIRTUAL_DISK_MAXIMUM_CHANGE_TRACKING_ID_LENGTH: u64 = 256;
+pub const VIRTUAL_DISK_MAXIMUM_CHANGE_TRACKING_ID_LENGTH: u32 = 256;
 
 pub mod set_virtual_disk {
     use super::*;
@@ -578,7 +578,7 @@ pub mod set_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct InfoParentPathWithDepthInfo {
-        pub child_depth: u64,
+        pub child_depth: u32,
         pub parent_file_path: PCWStr,
     }
 
@@ -595,7 +595,7 @@ pub mod set_virtual_disk {
         pub parent_file_path: PCWStr,
         pub unique_identifier: Guid,
         pub parent_with_depth_info: InfoParentPathWithDepthInfo,
-        pub vhd_physical_sector_size: u64,
+        pub vhd_physical_sector_size: u32,
         pub virtual_disk_id: Guid,
         pub change_tracking_enabled: Bool,
         pub parent_locator: InfoParentLocator,
@@ -628,7 +628,7 @@ pub mod compact_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct Version1 {
-        pub reserved: u64,
+        pub reserved: u32,
     }
 
     #[repr(C)]
@@ -665,14 +665,14 @@ pub mod merge_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct Version1 {
-        pub merge_depth: u64,
+        pub merge_depth: u32,
     }
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct Version2 {
-        pub merge_source_path: u64,
-        pub merge_target_path: u64,
+        pub merge_source_path: u32,
+        pub merge_target_path: u32,
     }
 
     #[repr(C)]
@@ -999,8 +999,8 @@ pub mod raw_scsi_virtual_disk {
         pub data_in: UChar,
         pub cdb_length: UChar,
         pub sense_info_length: UChar,
-        pub srb_flags: u64,
-        pub data_transfer_length: u64,
+        pub srb_flags: u32,
+        pub data_transfer_length: u32,
         pub data_buffer: *mut Void,
         pub sense_info: *mut UChar,
         pub cdb: *mut UChar,
@@ -1024,7 +1024,7 @@ pub mod raw_scsi_virtual_disk {
     pub struct ResponseVersion1 {
         pub scsi_status: UChar,
         pub sense_info_length: UChar,
-        pub data_transfer_length: u64,
+        pub data_transfer_length: u32,
     }
 
     #[repr(C)]

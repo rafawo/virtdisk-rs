@@ -92,7 +92,7 @@ impl VirtualDisk {
         virtual_disk_access_mask: VirtualDiskAccessMask,
         security_descriptor: Option<SecurityDescriptor>,
         flags: u32,
-        provider_specific_flags: u64,
+        provider_specific_flags: u32,
         parameters: &create_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
     ) -> Result<VirtualDisk, ResultCode> {
@@ -133,7 +133,7 @@ impl VirtualDisk {
         &self,
         security_descriptor: Option<SecurityDescriptor>,
         flags: u32,
-        provider_specific_flags: u64,
+        provider_specific_flags: u32,
         parameters: &attach_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
     ) -> Result<(), ResultCode> {
@@ -165,7 +165,7 @@ impl VirtualDisk {
     /// Detaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate virtual disk provider to accomplish the operation.
     /// The flags are a u32 representation of any valid combination from `detach_virtual_disk::Flag` values.
-    pub fn detach(&self, flags: u32, provider_specific_flags: u64) -> Result<(), ResultCode> {
+    pub fn detach(&self, flags: u32, provider_specific_flags: u32) -> Result<(), ResultCode> {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
                 result if result == 0 => Ok(()),
@@ -176,7 +176,7 @@ impl VirtualDisk {
 
     /// Retrieves the path to the physical device object that contains a virtual hard disk (VHD) or CD or DVD image file (ISO).
     pub fn get_physical_path(&self) -> Result<String, ResultCode> {
-        const PATH_SIZE: u64 = 256; // MAX_PATH
+        const PATH_SIZE: u32 = 256; // MAX_PATH
         let mut disk_path_wstr: [WChar; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
         unsafe {
@@ -194,7 +194,7 @@ impl VirtualDisk {
     /// Retrieves the physical paths to all attached virtual disks and returns it in a vector of strings.
     pub fn get_all_attached_physical_paths() -> Result<Vec<String>, ResultCode> {
         let mut paths_buffer: Vec<WChar> = Vec::new();
-        let mut buffer_size_bytes: u64 = 0;
+        let mut buffer_size_bytes: u32 = 0;
 
         let mut paths: Vec<String> = Vec::new();
 
@@ -243,10 +243,10 @@ impl VirtualDisk {
     pub fn get_storage_dependency_information(
         &self,
         flags: u32,
-        info_size: u64,
+        info_size: u32,
         info: *mut storage_dependency::Info,
-    ) -> Result<u64, ResultCode> {
-        let mut size_used: u64 = 0;
+    ) -> Result<u32, ResultCode> {
+        let mut size_used: u32 = 0;
 
         unsafe {
             match GetStorageDependencyInformation(
@@ -266,10 +266,10 @@ impl VirtualDisk {
     /// On success, returns the size used in the info structure.
     pub fn get_information(
         &self,
-        info_size: u64,
+        info_size: u32,
         info: &mut get_virtual_disk::Info,
-    ) -> Result<u64, ResultCode> {
-        let mut size_used: u64 = 0;
+    ) -> Result<u32, ResultCode> {
+        let mut size_used: u32 = 0;
 
         unsafe {
             match GetVirtualDiskInformation(self.handle, &info_size, info, &mut size_used) {
@@ -294,7 +294,7 @@ impl VirtualDisk {
     /// using function `VirtualHardDisk::get_metadata`.
     pub fn enumerate_metadata(&self) -> Result<Vec<Guid>, ResultCode> {
         let mut guids: Vec<Guid> = Vec::new();
-        let mut vector_size: u64 = 0;
+        let mut vector_size: u32 = 0;
 
         unsafe {
             let result =
@@ -333,7 +333,7 @@ impl VirtualDisk {
     /// Retrieves the specified metadata from the virtual disk as an u8 byte buffer.
     pub fn get_metadata(&self, item: &Guid) -> Result<Vec<u8>, ResultCode> {
         let mut buffer: Vec<u8> = Vec::new();
-        let mut buffer_size: u64 = 0;
+        let mut buffer_size: u32 = 0;
 
         unsafe {
             let result = GetVirtualDiskMetadata(
@@ -372,7 +372,7 @@ impl VirtualDisk {
             match SetVirtualDiskMetadata(
                 self.handle,
                 item,
-                buffer.len() as u64,
+                buffer.len() as u32,
                 buffer.as_ptr() as *const Void,
             ) {
                 result if result == 0 => Ok(()),
@@ -553,8 +553,8 @@ impl VirtualDisk {
         byte_length: u64,
         flags: u32,
         ranges: &mut [query_changes_virtual_disk::Range],
-    ) -> Result<(u64, u64), ResultCode> {
-        let mut range_count: u64 = ranges.len() as u64;
+    ) -> Result<(u32, u64), ResultCode> {
+        let mut range_count: u32 = ranges.len() as u32;
         let mut processed_length: u64 = 0;
 
         unsafe {
