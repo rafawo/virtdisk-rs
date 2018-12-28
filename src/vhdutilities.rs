@@ -3,7 +3,7 @@
 use crate::virtdisk::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
-use crate::{error_code_to_result_code, ResultCode};
+use crate::ResultCode;
 
 /// Opens a VHD for use as a container sandbox and returns a safe wrapper over the handle.
 pub fn open_vhd(filename: &str, read_only: bool) -> Result<VirtualDisk, ResultCode> {

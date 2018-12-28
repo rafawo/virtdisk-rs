@@ -1,8 +1,8 @@
 //! Wrappers around basic disk functions used to setup container storage.
 
 use crate::windefs::*;
-use crate::{error_code_to_result_code, ResultCode};
 use crate::winutilities::*;
+use crate::{error_code_to_result_code, ResultCode};
 
 pub struct PartitionInfo {
     volume_path: String,
@@ -10,9 +10,25 @@ pub struct PartitionInfo {
     partition_id: Guid,
 }
 
+const PARTITION_MSFT_RESERVED_GUID: Guid = Guid {
+    Data1: 0xE3C9E316,
+    Data2: 0x0B5C,
+    Data3: 0x4DB8,
+    Data4: [0x81, 0x7D, 0xF9, 0x2D, 0xF0, 0x02, 0x15, 0xAE],
+};
+
+const PARTITION_BASIC_DATA_GUID: Guid = Guid {
+    Data1: 0xEBD0A0A2,
+    Data2: 0xB9E5,
+    Data3: 0x4433,
+    Data4: [0x87, 0xC0, 0x68, 0xB6, 0xB7, 0x26, 0x99, 0xC7],
+};
+
+const GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER: u64 = 0x8000000000000000;
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub (crate) struct SetDiskAttributes {
+pub(crate) struct SetDiskAttributes {
     /// Specifies the size of the structure for versioning.
     pub version: DWord,
 
@@ -228,11 +244,161 @@ impl Disk {
     }
 
     pub fn format(&self, file_system: &str) -> Result<PartitionInfo, ResultCode> {
-        Ok(PartitionInfo {
-            volume_path: String::new(),
-            disk_id: GUID_NULL,
-            partition_id: GUID_NULL,
-        })
+        use winapi::um::{ioapiset, winioctl};
+
+        let format_module = WinLibrary::load(
+            "fmifs.dll",
+            winapi::um::libloaderapi::LOAD_LIBRARY_SEARCH_SYSTEM32,
+        )?;
+        let format_ex2_farproc = format_module.proc_address("FormatEx2")?;
+        let format_ex2: FormatEx2Routine = unsafe { std::mem::transmute(format_ex2_farproc) };
+
+        // Partition the disk
+        unsafe {
+            let mut create_disk = std::mem::zeroed::<winioctl::CREATE_DISK>();
+            create_disk.PartitionStyle = winioctl::PARTITION_STYLE_GPT;
+            let mut bytes: DWord = 0;
+
+            if ioapiset::DeviceIoControl(
+                self.handle,
+                winioctl::IOCTL_DISK_CREATE_DISK,
+                &mut create_disk as *mut _ as PVoid,
+                std::mem::size_of::<winioctl::CREATE_DISK>() as DWord,
+                std::ptr::null_mut(),
+                0,
+                &mut bytes,
+                std::ptr::null_mut(),
+            ) == 0
+            {
+                return Err(error_code_to_result_code(
+                    winapi::um::errhandlingapi::GetLastError(),
+                ));
+            }
+
+            #[repr(C)]
+            struct Layout {
+                info: winioctl::DRIVE_LAYOUT_INFORMATION_EX,
+                partitions: [winioctl::PARTITION_INFORMATION_EX; 1],
+            }
+
+            let mut layout = std::mem::zeroed::<Layout>();
+
+            if ioapiset::DeviceIoControl(
+                self.handle,
+                winioctl::IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
+                std::ptr::null_mut(),
+                0,
+                &mut layout as *mut _ as PVoid,
+                std::mem::size_of::<Layout>() as DWord,
+                &mut bytes,
+                std::ptr::null_mut(),
+            ) == 0
+            {
+                return Err(error_code_to_result_code(
+                    winapi::um::errhandlingapi::GetLastError(),
+                ));
+            }
+
+            let mut partition_info = PartitionInfo {
+                volume_path: String::new(),
+                disk_id: layout.info.u.Gpt().DiskId,
+                partition_id: create_guid()?,
+            };
+
+            layout.info.PartitionCount = 2;
+            let mut part_info = &mut layout.info.PartitionEntry[0];
+            part_info.PartitionStyle = winioctl::PARTITION_STYLE_GPT;
+            *part_info.StartingOffset.QuadPart_mut() = 1024 * 1024; //MB
+            *part_info.PartitionLength.QuadPart_mut() = 128 * 1024 * 1024; // 128 MB
+            part_info.PartitionNumber = 0;
+            part_info.RewritePartition = 1;
+            part_info.u.Gpt_mut().PartitionType = PARTITION_MSFT_RESERVED_GUID;
+            let start: i64 =
+                part_info.StartingOffset.QuadPart() + part_info.PartitionLength.QuadPart();
+
+            let mut part_info = (part_info as *mut winioctl::PARTITION_INFORMATION_EX).offset(1);
+            (*part_info).PartitionStyle = winioctl::PARTITION_STYLE_GPT;
+            *(*part_info).StartingOffset.QuadPart_mut() = start;
+            *(*part_info).PartitionLength.QuadPart_mut() =
+                (layout.info.u.Gpt().StartingUsableOffset.QuadPart()
+                    + layout.info.u.Gpt().UsableLength.QuadPart())
+                    - start;
+            (*part_info).PartitionNumber = 1;
+            (*part_info).RewritePartition = 1;
+            (*part_info).u.Gpt_mut().PartitionType = PARTITION_BASIC_DATA_GUID;
+            (*part_info).u.Gpt_mut().PartitionId = partition_info.partition_id;
+            (*part_info).u.Gpt_mut().Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER;
+
+            if ioapiset::DeviceIoControl(
+                self.handle,
+                winioctl::IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
+                &mut layout as *mut _ as PVoid,
+                std::mem::size_of::<Layout>() as DWord,
+                std::ptr::null_mut(),
+                0,
+                &mut bytes,
+                std::ptr::null_mut(),
+            ) == 0
+            {
+                return Err(error_code_to_result_code(
+                    winapi::um::errhandlingapi::GetLastError(),
+                ));
+            }
+
+            // Get the mounted volume path
+            partition_info.volume_path = volume_path_disk(self.handle)?;
+
+            // Store a string that lives longer than the loop below.
+            let label_string = widestring::WideCString::from_str("").unwrap();
+            let label_string_ptr = label_string.into_raw();
+
+            // This uses a static initialized context since FormatEx2 does not provide a context
+            // pointer in its callback routine.
+            FORMAT_CONTEXT = Some(FormatContext {
+                event: WinEvent::create(false, false, None, None).unwrap(),
+                result: ResultCode::Success,
+            });
+
+            // Unfortunately, FormatEx2 can fail if another thread is accessing the volume, perhaps
+            // because it is responding to the arrival notification. We will retry the format
+            // three times before finally giving up.
+            for _retry in 0..3 {
+                // Format the volume without TxF or short name support.
+                let mut format_param = std::mem::zeroed::<FmIfsFormatEx2Param>();
+                format_param.major = 2;
+                format_param.label_string = label_string_ptr;
+                format_param.flags = FMIFS_FORMAT_QUICK
+                    | FMIFS_FORMAT_TXF_DISABLE
+                    | FMIFS_FORMAT_SHORT_NAMES_DISABLE
+                    | FMIFS_FORMAT_FORCE;
+
+                format_ex2(
+                    widestring::WideString::from_str(&partition_info.volume_path)
+                        .into_vec()
+                        .as_mut_ptr(),
+                    FmIfsMediaType::FmMediaFixed,
+                    widestring::WideString::from_str(file_system)
+                        .into_vec()
+                        .as_mut_ptr(),
+                    &mut format_param,
+                    format_ex2_callback,
+                );
+
+                if let Some(ref context) = FORMAT_CONTEXT {
+                    context.event.wait(winapi::um::winbase::INFINITE);
+                    match context.result {
+                        ResultCode::Success => {
+                            return Ok(partition_info);
+                        }
+                        _ => {
+                            std::thread::sleep(std::time::Duration::from_millis(1000));
+                        }
+                    };
+                }
+            }
+
+            Err(ResultCode::GenFailure)
+        }
     }
 
     pub fn expand_volume(&self) -> bool {
@@ -244,6 +410,16 @@ impl Disk {
 pub fn force_online_disk(handle: Handle) -> Result<(), ResultCode> {
     let mut disk = Disk { handle };
     let result = disk.force_online();
+    unsafe {
+        disk.release_handle();
+    }
+    result
+}
+
+/// Retrieves the volume disk path.
+pub fn volume_path_disk(handle: Handle) -> Result<String, ResultCode> {
+    let mut disk = Disk { handle };
+    let result = disk.volume_path();
     unsafe {
         disk.release_handle();
     }

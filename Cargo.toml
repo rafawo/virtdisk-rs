@@ -17,6 +17,7 @@ winapi = { version = "0.3.6", features = [
     "errhandlingapi",
     "handleapi",
     "ioapiset",
+    "rpc",
     "synchapi",
     "winbase",
     "winerror",

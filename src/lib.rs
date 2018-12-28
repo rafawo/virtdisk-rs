@@ -31,7 +31,8 @@ pub mod virtdiskdefs;
 pub mod diskutilities;
 pub mod vhdutilities;
 
-pub (crate) mod winutilities;
+#[allow(dead_code)]
+pub(crate) mod winutilities;
 
 pub mod windefs {
     //! Defines type aliases for Windows Definitions to user Rust naming conventions
@@ -40,6 +41,10 @@ pub mod windefs {
     pub type Bool = winapi::shared::minwindef::BOOL;
     pub type Boolean = winapi::shared::ntdef::BOOLEAN;
     pub type Byte = winapi::shared::minwindef::BYTE;
+    pub type ULong = winapi::shared::minwindef::ULONG;
+    pub type UShort = winapi::shared::minwindef::USHORT;
+    pub type UInt = winapi::shared::minwindef::UINT;
+    pub type ULongPtr = winapi::shared::basetsd::ULONG_PTR;
     pub type DWord = winapi::shared::minwindef::DWORD;
     pub type DWordLong = winapi::shared::ntdef::DWORDLONG;
     pub type Handle = winapi::shared::ntdef::HANDLE;
@@ -78,6 +83,7 @@ pub enum ResultCode {
     FileNotFound,
     InsufficientBuffer,
     Timeout,
+    GenFailure,
     WindowsErrorCode(windefs::DWord),
 }
 
@@ -92,6 +98,7 @@ pub(crate) fn error_code_to_result_code(error_code: windefs::DWord) -> ResultCod
         2 => ResultCode::FileNotFound,
         122 => ResultCode::InsufficientBuffer,
         1460 => ResultCode::Timeout,
+        31 => ResultCode::GenFailure,
         error_code => ResultCode::WindowsErrorCode(error_code),
     }
 }
