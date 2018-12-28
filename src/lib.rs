@@ -47,6 +47,8 @@ pub mod windefs {
     pub type ULongPtr = winapi::shared::basetsd::ULONG_PTR;
     pub type DWord = winapi::shared::minwindef::DWORD;
     pub type DWordLong = winapi::shared::ntdef::DWORDLONG;
+    pub type LongLong = winapi::shared::ntdef::LONGLONG;
+    pub type LargeInteger = winapi::shared::ntdef::LARGE_INTEGER;
     pub type Handle = winapi::shared::ntdef::HANDLE;
     pub type PCWStr = winapi::shared::ntdef::PCWSTR;
     pub type PWStr = winapi::shared::ntdef::PWSTR;
@@ -100,68 +102,5 @@ pub(crate) fn error_code_to_result_code(error_code: windefs::DWord) -> ResultCod
         1460 => ResultCode::Timeout,
         31 => ResultCode::GenFailure,
         error_code => ResultCode::WindowsErrorCode(error_code),
-    }
-}
-
-pub(crate) mod win_wrappers {
-    use crate::windefs::*;
-
-    pub fn close_handle(handle: &mut Handle) {
-        if *handle == std::ptr::null_mut() {
-            return;
-        }
-
-        #[allow(unused_assignments)]
-        let mut result: Bool = 0;
-
-        unsafe {
-            result = winapi::um::handleapi::CloseHandle(*handle);
-        }
-
-        match result {
-            result if result == 0 => {
-                panic!("Closing handle failed with error code {}", unsafe {
-                    winapi::um::errhandlingapi::GetLastError()
-                });
-            }
-            _ => {}
-        }
-    }
-
-    pub fn create_file(
-        path: &str,
-        access_mask: DWord,
-        share_mode: DWord,
-        security_descriptor: Option<&mut winapi::um::minwinbase::SECURITY_ATTRIBUTES>,
-        creation_disposition: DWord,
-        flags_and_attributes: DWord,
-        template_file: Option<Handle>,
-    ) -> Result<Handle, crate::ResultCode> {
-        let security_descriptor_ptr = match security_descriptor {
-            Some(security_descriptor) => security_descriptor,
-            None => std::ptr::null_mut(),
-        };
-
-        let template_file_handle = match template_file {
-            Some(template_file) => template_file,
-            None => std::ptr::null_mut(),
-        };
-
-        unsafe {
-            let handle = winapi::um::fileapi::CreateFileW(
-                widestring::WideCString::from_str(path).unwrap().as_ptr(),
-                access_mask,
-                share_mode,
-                security_descriptor_ptr,
-                creation_disposition,
-                flags_and_attributes,
-                template_file_handle,
-            );
-
-            match handle {
-                handle if handle != std::ptr::null_mut() => Ok(handle),
-                _handle => Err(crate::ResultCode::FileNotFound),
-            }
-        }
     }
 }

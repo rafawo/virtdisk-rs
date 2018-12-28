@@ -1,6 +1,72 @@
 use crate::windefs::*;
 use crate::{error_code_to_result_code, ResultCode};
 
+pub fn close_handle(handle: &mut Handle) {
+    if *handle == std::ptr::null_mut() {
+        return;
+    }
+
+    #[allow(unused_assignments)]
+    let mut result: Bool = 0;
+
+    unsafe {
+        result = winapi::um::handleapi::CloseHandle(*handle);
+    }
+
+    match result {
+        result if result == 0 => {
+            panic!("Closing handle failed with error code {}", unsafe {
+                winapi::um::errhandlingapi::GetLastError()
+            });
+        }
+        _ => {}
+    }
+}
+
+pub fn create_file(
+    path: &str,
+    access_mask: DWord,
+    share_mode: DWord,
+    security_descriptor: Option<&mut winapi::um::minwinbase::SECURITY_ATTRIBUTES>,
+    creation_disposition: DWord,
+    flags_and_attributes: DWord,
+    template_file: Option<Handle>,
+) -> Result<Handle, crate::ResultCode> {
+    let security_descriptor_ptr = match security_descriptor {
+        Some(security_descriptor) => security_descriptor,
+        None => std::ptr::null_mut(),
+    };
+
+    let template_file_handle = match template_file {
+        Some(template_file) => template_file,
+        None => std::ptr::null_mut(),
+    };
+
+    unsafe {
+        let handle = winapi::um::fileapi::CreateFileW(
+            widestring::WideCString::from_str(path).unwrap().as_ptr(),
+            access_mask,
+            share_mode,
+            security_descriptor_ptr,
+            creation_disposition,
+            flags_and_attributes,
+            template_file_handle,
+        );
+
+        match handle {
+            handle if handle != std::ptr::null_mut() => Ok(handle),
+            _handle => Err(crate::ResultCode::FileNotFound),
+        }
+    }
+}
+
+pub fn guid_are_equal(left: &Guid, right: &Guid) -> bool {
+    left.Data1 == right.Data1
+        && left.Data2 == right.Data2
+        && left.Data3 == right.Data3
+        && left.Data4 == right.Data4
+}
+
 #[link(name = "cfgmgr32")]
 extern "C" {
     pub fn CM_Register_Notification(
@@ -78,7 +144,7 @@ pub struct WinEvent {
 
 impl std::ops::Drop for WinEvent {
     fn drop(&mut self) {
-        crate::win_wrappers::close_handle(&mut self.handle);
+        close_handle(&mut self.handle);
     }
 }
 
@@ -448,4 +514,62 @@ pub fn create_guid() -> Result<Guid, ResultCode> {
             error_code => Err(ResultCode::WindowsErrorCode(error_code as u32)),
         }
     }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+pub union IoStatusBlockDetails {
+    pub Status: winapi::shared::ntdef::NTSTATUS,
+    pub Pointer: PVoid,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+pub struct IoStatusBlock {
+    pub u: IoStatusBlockDetails,
+    pub Information: ULongPtr,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+pub struct FileFsFullSizeInformation {
+    pub TotalAllocationUnits: LargeInteger,
+    pub CallerAvailableAllocationUnits: LargeInteger,
+    pub ActualAvailableAllocationUnits: LargeInteger,
+    pub SectorsPerAllocationUnit: ULong,
+    pub BytesPerSector: ULong,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FsInfoClass {
+    FileFsVolumeInformation          = 1,
+    FileFsLabelInformation,         // 2
+    FileFsSizeInformation,          // 3
+    FileFsDeviceInformation,        // 4
+    FileFsAttributeInformation,     // 5
+    FileFsControlInformation,       // 6
+    FileFsFullSizeInformation,      // 7
+    FileFsObjectIdInformation,      // 8
+    FileFsDriverPathInformation,    // 9
+    FileFsVolumeFlagsInformation,   // 10
+    FileFsSectorSizeInformation,    // 11
+    FileFsDataCopyInformation,      // 12
+    FileFsMetadataSizeInformation,  // 13
+    FileFsFullSizeInformationEx,    // 14
+    FileFsMaximumInformation,
+}
+
+#[link(name = "NotosKrnl")]
+extern "C" {
+    pub fn NtQueryVolumeInformationFile(
+        FileHandle: Handle,
+        IoStatusBlock: *mut IoStatusBlock,
+        FsInformation: PVoid,
+        Length: ULong,
+        FsInformationClass: FsInfoClass,
+    ) -> winapi::shared::ntdef::NTSTATUS;
 }

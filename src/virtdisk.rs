@@ -14,7 +14,7 @@ pub struct VirtualDisk {
 
 impl std::ops::Drop for VirtualDisk {
     fn drop(&mut self) {
-        crate::win_wrappers::close_handle(&mut self.handle);
+        crate::winutilities::close_handle(&mut self.handle);
     }
 }
 
