@@ -501,7 +501,7 @@ pub extern "C" fn format_ex2_callback(
     1
 }
 
-#[link(name = "Rpcrt4")]
+#[link(name = "RpcRT4")]
 extern "C" {
     pub fn UuidCreate(guid: *mut Guid) -> winapi::shared::rpc::RPC_STATUS;
 }
@@ -563,7 +563,7 @@ pub enum FsInfoClass {
     FileFsMaximumInformation,
 }
 
-#[link(name = "NotosKrnl")]
+#[link(name = "NtosKrnl")]
 extern "C" {
     pub fn NtQueryVolumeInformationFile(
         FileHandle: Handle,
@@ -704,4 +704,14 @@ impl TemporaryPrivilege {
             })
         }
     }
+}
+
+#[link(name = "Pathcch")]
+extern "C" {
+    pub fn PathCchCombine(
+        pszPathOut: PWStr,
+        cchPathOut: usize,
+        pszPathIn: PCWStr,
+        pszMore: PCWStr,
+    ) -> winapi::shared::ntdef::HRESULT;
 }

@@ -62,7 +62,7 @@ extern "C" {
 
     pub fn GetVirtualDiskInformation(
         virtualDiskHandle: Handle,
-        virtualDiskInfoSize: *const u32,
+        virtualDiskInfoSize: *mut u32,
         virtualDiskInfo: *mut get_virtual_disk::Info,
         sizeUsed: *mut u32,
     ) -> DWord;

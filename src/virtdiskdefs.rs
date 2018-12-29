@@ -447,8 +447,8 @@ pub mod storage_dependency {
     #[repr(C)]
     #[derive(Copy, Clone)]
     pub union InfoVersionDetails {
-        pub version1: InfoVersion1,
-        pub version2: InfoVersion2,
+        pub version1: [InfoVersion1; 1],
+        pub version2: [InfoVersion2; 1],
     }
 
     #[repr(C)]
@@ -456,7 +456,7 @@ pub mod storage_dependency {
     pub struct Info {
         pub version: InfoVersion,
         pub number_entries: u32,
-        pub version_details: *mut InfoVersionDetails,
+        pub version_details: InfoVersionDetails,
     }
 
     #[repr(C)]

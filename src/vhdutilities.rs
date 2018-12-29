@@ -212,12 +212,8 @@ pub fn create_diff_vhd(
             Some(&parameters),
         )?;
 
-        let mut vhd_info = unsafe { std::mem::zeroed::<get_virtual_disk::Info>() };
-        vhd_info.version = get_virtual_disk::InfoVersion::Size;
-        let vhd_info_size = std::mem::size_of::<get_virtual_disk::InfoSize>() as u32;
-        assert!(parent.get_information(vhd_info_size, &mut vhd_info)? >= vhd_info_size);
-
-        block_size_in_bytes = unsafe { vhd_info.version_details.size.block_size };
+        let vhd_info_wrapper = parent.get_information(get_virtual_disk::InfoVersion::Size)?;
+        block_size_in_bytes = unsafe { vhd_info_wrapper.info().version_details.size.block_size };
     }
 
     let parent_name_wstr = widestring::WideCString::from_str(parent_name).unwrap();
@@ -295,4 +291,53 @@ pub fn get_vhd_volume_path(virtual_disk: &VirtualDisk) -> Result<String, ResultC
     )?;
 
     disk.volume_path()
+}
+
+/// Determines the VHD path of the VHD hosting a volume or file within the volume.
+pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
+    use winapi::um::{fileapi, winnt};
+
+    let file = create_file(
+        filename,
+        0,
+        winnt::FILE_SHARE_READ | winnt::FILE_SHARE_WRITE,
+        None,
+        fileapi::OPEN_EXISTING,
+        winnt::FILE_ATTRIBUTE_NORMAL,
+        None,
+    )?;
+
+    let virtual_disk = VirtualDisk::wrap_handle(file)?;
+    let dependency_info_wrapper = match virtual_disk.get_storage_dependency_information(
+        storage_dependency::GetFlag::HostVolumes as u32,
+        storage_dependency::InfoVersion::Version2,
+    ) {
+        Err(ResultCode::WindowsErrorCode(error))
+            if error == winapi::shared::winerror::ERROR_VIRTDISK_NOT_VIRTUAL_DISK as u32 =>
+        {
+            return Ok(String::from(""));
+        }
+        Err(error) => {
+            return Err(error);
+        }
+        Ok(wrapper) => wrapper,
+    };
+
+    const MAX_PATH: usize = 256;
+    let mut filename: [WChar; MAX_PATH] = [0; MAX_PATH];
+
+    unsafe {
+        match PathCchCombine(
+            filename.as_mut_ptr(),
+            MAX_PATH,
+            dependency_info_wrapper.info().version_details.version2[0].host_volume_name,
+            dependency_info_wrapper.info().version_details.version2[0]
+                .dependent_volume_relative_path,
+        ) {
+            result if result == 0 => {
+                Ok(widestring::WideCString::from_ptr_str(filename.as_ptr()).to_string_lossy())
+            }
+            _ => Err(ResultCode::GenFailure),
+        }
+    }
 }

@@ -6,6 +6,44 @@ use crate::windefs::*;
 use crate::{error_code_to_result_code, ResultCode};
 use widestring::{WideCString, WideStr, WideString};
 
+/// Wrapper of a get_virtual_disk::Info struct that can be of a variable heap allocated length.
+pub struct GetVirtualDiskInfoWrapper {
+    raw_buffer: Vec<Byte>,
+}
+
+impl GetVirtualDiskInfoWrapper {
+    /// Gets a reference to a get_virtual_disk::Info struct,
+    /// using the internal raw buffer.
+    pub fn info(&self) -> &get_virtual_disk::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_ptr()) }
+    }
+
+    /// Gets a mut reference to a get_virtual_disk::Info struct,
+    /// using the internal raw buffer.
+    pub fn info_mut(&mut self) -> &mut get_virtual_disk::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_mut_ptr()) }
+    }
+}
+
+/// Wrapper of a storage_dependency::Info struct that can be of a variable heap allocated length.
+pub struct GetStorageDependencyInformationWrapper {
+    raw_buffer: Vec<Byte>,
+}
+
+impl GetStorageDependencyInformationWrapper {
+    /// Gets a reference to a storage_dependency::Info struct,
+    /// using the internal raw buffer.
+    pub fn info(&self) -> &storage_dependency::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_ptr()) }
+    }
+
+    /// Gets a mut reference to a storage_dependency::Info struct,
+    /// using the internal raw buffer.
+    pub fn info_mut(&mut self) -> &mut storage_dependency::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_mut_ptr()) }
+    }
+}
+
 /// Safe abstraction to a virtual hard disk handle.
 /// Additionally, provides the entry point to all safe wrappers to the virtdisk C bindings.
 pub struct VirtualDisk {
@@ -243,38 +281,83 @@ impl VirtualDisk {
     pub fn get_storage_dependency_information(
         &self,
         flags: u32,
-        info_size: u32,
-        info: *mut storage_dependency::Info,
-    ) -> Result<u32, ResultCode> {
-        let mut size_used: u32 = 0;
+        version: storage_dependency::InfoVersion,
+    ) -> Result<GetStorageDependencyInformationWrapper, ResultCode> {
+        let mut raw_buffer: Vec<Byte> = Vec::new();
+        let size: u32 = std::mem::size_of::<storage_dependency::Info>() as u32;
+        let mut buffer_size: u32 = size;
+        raw_buffer.reserve(buffer_size as usize);
+
+        let info_ptr = raw_buffer.as_mut_ptr() as *mut storage_dependency::Info;
 
         unsafe {
-            match GetStorageDependencyInformation(
+            (*info_ptr).version = version;
+
+            let result = GetStorageDependencyInformation(
                 self.handle,
                 flags,
-                info_size,
-                info,
-                &mut size_used,
-            ) {
-                result if result == 0 => Ok(size_used),
-                result => Err(error_code_to_result_code(result)),
+                size,
+                info_ptr,
+                &mut buffer_size,
+            );
+
+            match error_code_to_result_code(result) {
+                ResultCode::InsufficientBuffer => {
+                    raw_buffer.reserve(buffer_size as usize);
+
+                    let result = GetStorageDependencyInformation(
+                        self.handle,
+                        flags,
+                        size,
+                        info_ptr,
+                        &mut buffer_size,
+                    );
+
+                    match error_code_to_result_code(result) {
+                        ResultCode::Success => {
+                            Ok(GetStorageDependencyInformationWrapper { raw_buffer })
+                        }
+                        error => Err(error),
+                    }
+                }
+                ResultCode::Success => Ok(GetStorageDependencyInformationWrapper { raw_buffer }),
+                error => Err(error),
             }
         }
     }
 
-    /// Retrieves on the supplied info structure information of a virtual disk.
-    /// On success, returns the size used in the info structure.
+    /// Retrieves information of a virtual disk wrapped on a safe structure on top of a raw buffer.
     pub fn get_information(
         &self,
-        info_size: u32,
-        info: &mut get_virtual_disk::Info,
-    ) -> Result<u32, ResultCode> {
+        version: get_virtual_disk::InfoVersion,
+    ) -> Result<GetVirtualDiskInfoWrapper, ResultCode> {
         let mut size_used: u32 = 0;
+        let mut raw_buffer: Vec<Byte> = Vec::new();
+        let mut size: u32 = std::mem::size_of::<get_virtual_disk::Info>() as u32;
+        raw_buffer.reserve(size as usize);
+
+        let info_ptr = raw_buffer.as_mut_ptr() as *mut get_virtual_disk::Info;
 
         unsafe {
-            match GetVirtualDiskInformation(self.handle, &info_size, info, &mut size_used) {
-                result if result == 0 => Ok(size_used),
-                result => Err(error_code_to_result_code(result)),
+            (*info_ptr).version = version;
+
+            let result =
+                GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
+
+            match error_code_to_result_code(result) {
+                ResultCode::InsufficientBuffer => {
+                    raw_buffer.reserve(size as usize);
+
+                    let result =
+                        GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
+
+                    match error_code_to_result_code(result) {
+                        ResultCode::Success => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                        error => Err(error),
+                    }
+                }
+                ResultCode::Success => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                error => Err(error),
             }
         }
     }
