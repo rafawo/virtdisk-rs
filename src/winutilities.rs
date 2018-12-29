@@ -546,20 +546,20 @@ pub struct FileFsFullSizeInformation {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FsInfoClass {
-    FileFsVolumeInformation          = 1,
-    FileFsLabelInformation,         // 2
-    FileFsSizeInformation,          // 3
-    FileFsDeviceInformation,        // 4
-    FileFsAttributeInformation,     // 5
-    FileFsControlInformation,       // 6
-    FileFsFullSizeInformation,      // 7
-    FileFsObjectIdInformation,      // 8
-    FileFsDriverPathInformation,    // 9
-    FileFsVolumeFlagsInformation,   // 10
-    FileFsSectorSizeInformation,    // 11
-    FileFsDataCopyInformation,      // 12
-    FileFsMetadataSizeInformation,  // 13
-    FileFsFullSizeInformationEx,    // 14
+    FileFsVolumeInformation = 1,
+    FileFsLabelInformation,        // 2
+    FileFsSizeInformation,         // 3
+    FileFsDeviceInformation,       // 4
+    FileFsAttributeInformation,    // 5
+    FileFsControlInformation,      // 6
+    FileFsFullSizeInformation,     // 7
+    FileFsObjectIdInformation,     // 8
+    FileFsDriverPathInformation,   // 9
+    FileFsVolumeFlagsInformation,  // 10
+    FileFsSectorSizeInformation,   // 11
+    FileFsDataCopyInformation,     // 12
+    FileFsMetadataSizeInformation, // 13
+    FileFsFullSizeInformationEx,   // 14
     FileFsMaximumInformation,
 }
 
@@ -572,4 +572,136 @@ extern "C" {
         Length: ULong,
         FsInformationClass: FsInfoClass,
     ) -> winapi::shared::ntdef::NTSTATUS;
+}
+
+fn enable_privilege(
+    token_handle: Handle,
+    id: &winapi::um::winnt::LUID,
+    enable: bool,
+) -> Result<bool, ResultCode> {
+    use winapi::um::{securitybaseapi, winnt};
+
+    unsafe {
+        let mut new_value = std::mem::zeroed::<winnt::TOKEN_PRIVILEGES>();
+        let mut prev_value = std::mem::zeroed::<winnt::TOKEN_PRIVILEGES>();
+        let mut prev_length: DWord = std::mem::size_of::<winnt::TOKEN_PRIVILEGES>() as DWord;
+
+        new_value.PrivilegeCount = 1;
+        new_value.Privileges[0].Luid = *id;
+        new_value.Privileges[0].Attributes = match enable {
+            true => winnt::SE_PRIVILEGE_ENABLED,
+            false => 0,
+        };
+
+        if securitybaseapi::AdjustTokenPrivileges(
+            token_handle,
+            0,
+            &mut new_value,
+            std::mem::size_of::<winnt::TOKEN_PRIVILEGES>() as DWord,
+            &mut prev_value,
+            &mut prev_length,
+        ) == 0
+        {
+            return Err(error_code_to_result_code(
+                winapi::um::errhandlingapi::GetLastError(),
+            ));
+        }
+
+        Ok(0 == prev_value.PrivilegeCount
+            || 0 != (prev_value.Privileges[0].Attributes & winnt::SE_PRIVILEGE_ENABLED))
+    }
+}
+
+pub struct TemporaryPrivilege {
+    privilege: winapi::um::winnt::LUID,
+    token_handle: Handle,
+    had_privilege_already: bool,
+    impersonating_self: bool,
+}
+
+impl std::ops::Drop for TemporaryPrivilege {
+    fn drop(&mut self) {
+        if self.had_privilege_already {
+            if enable_privilege(self.token_handle, &self.privilege, false).is_err() {
+                panic!("It's not safe to leave privileges enabled on failure.");
+            }
+        }
+
+        if self.impersonating_self {
+            if unsafe { winapi::um::securitybaseapi::RevertToSelf() } != 0 {
+                panic!("Failed to revert impersonation to self!");
+            }
+        }
+
+        close_handle(&mut self.token_handle);
+    }
+}
+
+impl TemporaryPrivilege {
+    pub fn new(privilege_name: &str) -> Result<TemporaryPrivilege, ResultCode> {
+        use winapi::um::{errhandlingapi, processthreadsapi, securitybaseapi, winbase, winnt};
+
+        unsafe {
+            let mut privilege = std::mem::zeroed::<winnt::LUID>();
+
+            if winbase::LookupPrivilegeValueW(
+                std::ptr::null(),
+                widestring::WideCString::from_str(privilege_name)
+                    .unwrap()
+                    .as_ptr(),
+                &mut privilege,
+            ) == 0
+            {
+                return Err(error_code_to_result_code(errhandlingapi::GetLastError()));
+            }
+
+            let mut token_handle: Handle = std::ptr::null_mut();
+            let mut impersonating_self = false;
+
+            if processthreadsapi::OpenThreadToken(
+                processthreadsapi::GetCurrentThread(),
+                winnt::TOKEN_ADJUST_PRIVILEGES | winnt::TOKEN_QUERY,
+                0,
+                &mut token_handle,
+            ) == 0
+            {
+                let error = errhandlingapi::GetLastError();
+
+                if error != winapi::shared::winerror::ERROR_NO_TOKEN {
+                    return Err(error_code_to_result_code(error));
+                }
+
+                if securitybaseapi::ImpersonateSelf(winnt::SecurityImpersonation) == 0 {
+                    return Err(error_code_to_result_code(errhandlingapi::GetLastError()));
+                }
+
+                if processthreadsapi::OpenThreadToken(
+                    processthreadsapi::GetCurrentThread(),
+                    winnt::TOKEN_ADJUST_PRIVILEGES | winnt::TOKEN_QUERY,
+                    0,
+                    &mut token_handle,
+                ) == 0
+                {
+                    let error = errhandlingapi::GetLastError();
+
+                    if securitybaseapi::RevertToSelf() != 0 {
+                        panic!("Failed to revert impersonation to self!");
+                    }
+
+                    return Err(error_code_to_result_code(error));
+                }
+
+                impersonating_self = true;
+            }
+
+            let had_privilege_already = enable_privilege(token_handle, &privilege, true)?;
+
+            Ok(TemporaryPrivilege {
+                privilege,
+                token_handle,
+                had_privilege_already,
+                impersonating_self,
+            })
+        }
+    }
 }

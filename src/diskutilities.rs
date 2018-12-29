@@ -96,12 +96,21 @@ impl Disk {
     /// Opens a disk by path. Path can be
     /// a volume path (e.g. \\?\Volume{4c1b02c1-d990-11dc-99ae-806e6f6e6963}\)
     /// or a device path (\\?\scsi#disk&ven_mtfddak1&prod_28mam-1j1#4.....)
-    pub fn open(disk_path: &str, access_mask: Option<DWord>) -> Result<Disk, ResultCode> {
+    pub fn open(
+        disk_path: &str,
+        access_mask: Option<DWord>,
+        flags: Option<DWord>,
+    ) -> Result<Disk, ResultCode> {
         use winapi::um::{fileapi, winnt};
 
         let access_mask_flags = match access_mask {
             Some(flags) => flags,
             None => winnt::GENERIC_READ | winnt::GENERIC_WRITE,
+        };
+
+        let file_flags = match flags {
+            Some(flags) => flags,
+            None => winnt::FILE_ATTRIBUTE_NORMAL,
         };
 
         let mut normalized_disk_path = disk_path.to_string();
@@ -116,7 +125,7 @@ impl Disk {
             winnt::FILE_SHARE_READ | winnt::FILE_SHARE_WRITE,
             None,
             fileapi::OPEN_EXISTING,
-            winnt::FILE_ATTRIBUTE_NORMAL,
+            file_flags,
             None,
         ) {
             Ok(handle) => Ok(Disk { handle }),
@@ -488,10 +497,11 @@ impl Disk {
             }
 
             // Determine the new partition size and extend the partition
-            let current_partition_end: LongLong = (*partition_info).StartingOffset.QuadPart() +
-                (*partition_info).PartitionLength.QuadPart();
-            let new_partition_end: LongLong = (*drive_layout).u.Gpt().StartingUsableOffset.QuadPart() +
-                (*drive_layout).u.Gpt().UsableLength.QuadPart();
+            let current_partition_end: LongLong = (*partition_info).StartingOffset.QuadPart()
+                + (*partition_info).PartitionLength.QuadPart();
+            let new_partition_end: LongLong =
+                (*drive_layout).u.Gpt().StartingUsableOffset.QuadPart()
+                    + (*drive_layout).u.Gpt().UsableLength.QuadPart();
 
             assert!(current_partition_end <= new_partition_end);
             let mut new_partition_size: LongLong = *(*partition_info).PartitionLength.QuadPart();
@@ -504,7 +514,8 @@ impl Disk {
 
                 let mut grow_partition = std::mem::zeroed::<DiskGrowPartition>();
                 grow_partition.partition_number = (*partition_info).PartitionNumber;
-                *grow_partition.bytes_to_grow.QuadPart_mut() = new_partition_end - current_partition_end;
+                *grow_partition.bytes_to_grow.QuadPart_mut() =
+                    new_partition_end - current_partition_end;
 
                 new_partition_size += *grow_partition.bytes_to_grow.QuadPart();
 
@@ -544,14 +555,18 @@ impl Disk {
             }
 
             // Compute the new number of clusters (rounding down) and extend the file system.
-            let cluster_size: LongLong = (volume_size_info.BytesPerSector *
-                volume_size_info.SectorsPerAllocationUnit) as i64;
+            let cluster_size: LongLong = (volume_size_info.BytesPerSector
+                * volume_size_info.SectorsPerAllocationUnit)
+                as i64;
             let new_number_of_allocation_units: LongLong = new_partition_size / cluster_size;
 
             // NTFS may extend the volume by one sector less than requested (NtfsChangeVolumeSize),
             // so increase the current size by one to check if there's any space left.
-            if *volume_size_info.TotalAllocationUnits.QuadPart() + 1 < new_number_of_allocation_units {
-                let mut new_number_of_sectors: LongLong = new_number_of_allocation_units * volume_size_info.SectorsPerAllocationUnit as i64;
+            if *volume_size_info.TotalAllocationUnits.QuadPart() + 1
+                < new_number_of_allocation_units
+            {
+                let mut new_number_of_sectors: LongLong = new_number_of_allocation_units
+                    * volume_size_info.SectorsPerAllocationUnit as i64;
 
                 if ioapiset::DeviceIoControl(
                     volume.handle,
