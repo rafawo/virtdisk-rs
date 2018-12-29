@@ -247,3 +247,38 @@ pub fn create_diff_vhd(
 
     Ok(())
 }
+
+/// Creates a VHD from the contents of another VHD. This is used to defragment VHDs
+/// after they are fully constructed.
+pub fn create_vhd_from_source(
+    filename: &str,
+    source_filename: &str,
+    block_size_mb: u32,
+) -> Result<(), ResultCode> {
+    let source_path_wstr = widestring::WideCString::from_str(source_filename).unwrap();
+    let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
+    parameters.version = create_virtual_disk::Version::Version2;
+    unsafe {
+        parameters.version_details.version2.source_path = source_path_wstr.as_ptr();
+        parameters.version_details.version2.block_size_in_bytes = block_size_mb * 1024 * 1024;
+        parameters.version_details.version2.open_flags = open_virtual_disk::Flag::CachedIo as u32;
+    }
+
+    let default_storage_type = VirtualStorageType {
+        device_id: 0,
+        vendor_id: GUID_NULL,
+    };
+
+    let _virtual_disk = VirtualDisk::create(
+        default_storage_type,
+        filename,
+        VirtualDiskAccessMask::None,
+        None,
+        create_virtual_disk::Flag::None as u32,
+        0,
+        &parameters,
+        None,
+    )?;
+
+    Ok(())
+}
