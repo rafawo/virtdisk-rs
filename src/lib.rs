@@ -43,7 +43,7 @@ pub mod vhdutilities;
 pub(crate) mod winutilities;
 
 pub mod windefs {
-    //! Defines type aliases for Windows Definitions to user Rust naming conventions
+    //! Defines type aliases for Windows Definitions to use Rust naming conventions
     //! throughout the crate.
 
     pub type Bool = winapi::shared::minwindef::BOOL;
