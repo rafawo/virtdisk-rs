@@ -60,15 +60,7 @@ pub fn mount_vhd(
     // Make sure we revert the temporary privilege to manage volumes
     drop(manage_volume);
 
-    let disk_path = virtual_disk.get_physical_path()?;
-    let disk = Disk::open(
-        &disk_path,
-        None,
-        Some(
-            winapi::um::winnt::FILE_ATTRIBUTE_NORMAL | winapi::um::winbase::FILE_FLAG_NO_BUFFERING,
-        ),
-    )?;
-
+    let disk = open_vhd_backed_disk(&virtual_disk)?;
     match disk.force_online() {
         Err(error) => {
             virtual_disk.detach(detach_virtual_disk::Flag::None as u32, 0)?;
@@ -168,15 +160,7 @@ pub fn create_base_vhd(
 
     mount_vhd_temporarily_for_setup(&virtual_disk)?;
 
-    let disk_path = virtual_disk.get_physical_path()?;
-    let disk = Disk::open(
-        &disk_path,
-        None,
-        Some(
-            winapi::um::winnt::FILE_ATTRIBUTE_NORMAL | winapi::um::winbase::FILE_FLAG_NO_BUFFERING,
-        ),
-    )?;
-
+    let disk = open_vhd_backed_disk(&virtual_disk)?;
     let partition_info = disk.format(file_system)?;
 
     Ok(MountedVolume {
@@ -281,15 +265,7 @@ pub fn create_vhd_from_source(
 
 /// Finds the given mounted VHD and returns the resulting volume path.
 pub fn get_vhd_volume_path(virtual_disk: &VirtualDisk) -> Result<String, ResultCode> {
-    let disk_path = virtual_disk.get_physical_path()?;
-    let disk = Disk::open(
-        &disk_path,
-        None,
-        Some(
-            winapi::um::winnt::FILE_ATTRIBUTE_NORMAL | winapi::um::winbase::FILE_FLAG_NO_BUFFERING,
-        ),
-    )?;
-
+    let disk = open_vhd_backed_disk(&virtual_disk)?;
     disk.volume_path()
 }
 
@@ -378,4 +354,16 @@ pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Resu
 pub fn get_physical_vhd_size_in_kb(virtual_disk: &VirtualDisk) -> Result<u64, ResultCode> {
     let info_wrapper = virtual_disk.get_information(get_virtual_disk::InfoVersion::Size)?;
     unsafe { Ok(info_wrapper.info().version_details.size.physical_size / 1024) }
+}
+
+/// Opens the disk backed by the secified VHD.
+pub fn open_vhd_backed_disk(virtual_disk: &VirtualDisk) -> Result<Disk, ResultCode> {
+    let disk_path = virtual_disk.get_physical_path()?;
+    Disk::open(
+        &disk_path,
+        None,
+        Some(
+            winapi::um::winnt::FILE_ATTRIBUTE_NORMAL | winapi::um::winbase::FILE_FLAG_NO_BUFFERING,
+        ),
+    )
 }
