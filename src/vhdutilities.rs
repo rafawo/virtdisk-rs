@@ -185,3 +185,65 @@ pub fn create_base_vhd(
         partition: partition_info,
     })
 }
+
+/// Creates a new diff VHD specified by filename based on the given parent disk.
+pub fn create_diff_vhd(
+    filename: &str,
+    parent_name: &str,
+    block_size_mb: u32,
+) -> Result<(), ResultCode> {
+    assert!(block_size_mb <= 256);
+    let mut block_size_in_bytes = block_size_mb * 1024 * 1024;
+
+    if block_size_in_bytes == 0 {
+        let mut parameters = unsafe { std::mem::zeroed::<open_virtual_disk::Parameters>() };
+        parameters.version = open_virtual_disk::Version::Version2;
+
+        let default_storage_type = VirtualStorageType {
+            device_id: 0,
+            vendor_id: GUID_NULL,
+        };
+
+        let parent = VirtualDisk::open(
+            default_storage_type,
+            parent_name,
+            VirtualDiskAccessMask::None,
+            open_virtual_disk::Flag::NoParents as u32,
+            Some(&parameters),
+        )?;
+
+        let mut vhd_info = unsafe { std::mem::zeroed::<get_virtual_disk::Info>() };
+        vhd_info.version = get_virtual_disk::InfoVersion::Size;
+        let vhd_info_size = std::mem::size_of::<get_virtual_disk::InfoSize>() as u32;
+        assert!(parent.get_information(vhd_info_size, &mut vhd_info)? >= vhd_info_size);
+
+        block_size_in_bytes = unsafe { vhd_info.version_details.size.block_size };
+    }
+
+    let parent_name_wstr = widestring::WideCString::from_str(parent_name).unwrap();
+    let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
+    parameters.version = create_virtual_disk::Version::Version2;
+    unsafe {
+        parameters.version_details.version2.parent_path = parent_name_wstr.as_ptr();
+        parameters.version_details.version2.block_size_in_bytes = block_size_in_bytes;
+        parameters.version_details.version2.open_flags = open_virtual_disk::Flag::CachedIo as u32;
+    }
+
+    let default_storage_type = VirtualStorageType {
+        device_id: 0,
+        vendor_id: GUID_NULL,
+    };
+
+    let _virtual_disk = VirtualDisk::create(
+        default_storage_type,
+        filename,
+        VirtualDiskAccessMask::None,
+        None,
+        create_virtual_disk::Flag::None as u32,
+        0,
+        &parameters,
+        None,
+    )?;
+
+    Ok(())
+}
