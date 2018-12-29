@@ -341,3 +341,35 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
         }
     }
 }
+
+/// Sets the caching mode on a mounted VHD.
+pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Result<(), ResultCode> {
+    #[repr(C)]
+    struct CachePolicyRequest {
+        request_level: u32,
+        cache_mode: u16,
+    }
+
+    let mut request = CachePolicyRequest {
+        request_level: 1,
+        cache_mode: cache_mode,
+    };
+
+    let mut bytes: DWord = 0;
+
+    unsafe {
+        match winapi::um::ioapiset::DeviceIoControl(
+            virtual_disk.get_handle(),
+            2955792, // IOCTL_STORAGE_SET_SURFACE_CACHE_POLICY
+            &mut request as *mut _ as PVoid,
+            std::mem::size_of::<CachePolicyRequest>() as u32,
+            std::ptr::null_mut(),
+            0,
+            &mut bytes,
+            std::ptr::null_mut(),
+        ) {
+            result if result != 0 => Ok(()),
+            result => Err(error_code_to_result_code(result as u32)),
+        }
+    }
+}
