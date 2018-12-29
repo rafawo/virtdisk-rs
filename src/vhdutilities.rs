@@ -396,7 +396,7 @@ pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, Res
         unsafe {
             match winapi::um::ioapiset::DeviceIoControl(
                 virtual_disk.get_handle(),
-                 2955600, // IOCTL_STORAGE_RESIZE_VIRTUAL_DISK
+                2955600, // IOCTL_STORAGE_RESIZE_VIRTUAL_DISK
                 &mut request as *mut _ as PVoid,
                 std::mem::size_of::<VhdResizeRequest>() as u32,
                 std::ptr::null_mut(),
@@ -410,5 +410,63 @@ pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, Res
         }
     } else {
         Ok(false)
+    }
+}
+
+/// Merges a differencing disk into its immediate parent. This function should be called with caution,
+/// there might be destructive side effects if the parent disk has other child disks.
+pub fn merge_diff_vhd(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
+    let event = WinEvent::create(false, false, None, None)?;
+    let mut overlapped = unsafe { std::mem::zeroed::<Overlapped>() };
+    overlapped.hEvent = event.get_handle();
+
+    let mut parameters = unsafe { std::mem::zeroed::<merge_virtual_disk::Parameters>() };
+    parameters.version = merge_virtual_disk::Version::Version2;
+    unsafe {
+        parameters.version_details.version2.merge_source_depth = 1;
+        parameters.version_details.version2.merge_target_depth = 2;
+    }
+
+    match virtual_disk.merge(
+        merge_virtual_disk::Flag::None as u32,
+        &parameters,
+        Some(&overlapped),
+    ) {
+        Err(ResultCode::IoPending) => wait_for_vhd_operation(&virtual_disk, &overlapped),
+        Err(ResultCode::Success) => {
+            panic!("Success case on a merge call with overlapped struct is unexpected!")
+        }
+        Err(error) => Err(error),
+        Ok(()) => panic!("Success case on a merge call with overlapped struct is unexpected!"),
+    }
+}
+
+/// Waits for the given operation.
+pub fn wait_for_vhd_operation(
+    virtual_disk: &VirtualDisk,
+    overlapped: &Overlapped,
+) -> Result<(), ResultCode> {
+    loop {
+        let progress = virtual_disk.get_operation_progress(overlapped)?;
+
+        match progress.operation_status {
+            winapi::shared::winerror::ERROR_IO_PENDING => {
+                // Job is in progress
+            }
+            winapi::shared::winerror::ERROR_SUCCESS => {
+                // Operation completed successfully
+                return Ok(());
+            }
+            winapi::shared::winerror::ERROR_OPERATION_ABORTED => {
+                // Job was canceled
+                return Err(ResultCode::OperationAborted);
+            }
+            error => {
+                // Job failed
+                return Err(error_code_to_result_code(error));
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(500));
     }
 }

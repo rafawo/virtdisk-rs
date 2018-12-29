@@ -671,8 +671,8 @@ pub mod merge_virtual_disk {
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct Version2 {
-        pub merge_source_path: u32,
-        pub merge_target_path: u32,
+        pub merge_source_depth: u32,
+        pub merge_target_depth: u32,
     }
 
     #[repr(C)]

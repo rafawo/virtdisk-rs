@@ -149,6 +149,10 @@ impl std::ops::Drop for WinEvent {
 }
 
 impl WinEvent {
+    pub fn get_handle(&self) -> Handle {
+        self.handle.clone()
+    }
+
     pub fn create(
         manual_reset: bool,
         initial_state: bool,

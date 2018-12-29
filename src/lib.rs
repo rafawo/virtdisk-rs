@@ -85,6 +85,8 @@ pub enum ResultCode {
     FileNotFound,
     InsufficientBuffer,
     Timeout,
+    OperationAborted,
+    IoPending,
     GenFailure,
     WindowsErrorCode(windefs::DWord),
 }
@@ -100,6 +102,8 @@ pub(crate) fn error_code_to_result_code(error_code: windefs::DWord) -> ResultCod
         2 => ResultCode::FileNotFound,
         122 => ResultCode::InsufficientBuffer,
         1460 => ResultCode::Timeout,
+        955 => ResultCode::OperationAborted,
+        997 => ResultCode::IoPending,
         31 => ResultCode::GenFailure,
         error_code => ResultCode::WindowsErrorCode(error_code),
     }
