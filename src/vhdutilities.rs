@@ -367,3 +367,48 @@ pub fn open_vhd_backed_disk(virtual_disk: &VirtualDisk) -> Result<Disk, ResultCo
         ),
     )
 }
+
+/// Expands the virtual size of a VHD to the requested size, if the current size is smaller
+/// than the requested size.
+/// Returns true if the VHD was expanded, false if the current size of the VHD is already greater
+/// than or equal to the specified new size.
+pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, ResultCode> {
+    let info_wrapper = virtual_disk.get_information(get_virtual_disk::InfoVersion::Size)?;
+
+    if unsafe { info_wrapper.info().version_details.size.virtual_size } < new_size {
+        #[repr(C)]
+        struct VhdResizeRequest {
+            new_virtual_size: u64,
+            expand_only: Boolean,
+            allow_unsafe_virtual_size: Boolean,
+            shrink_to_minimum_safe_size: Boolean,
+        }
+
+        let mut request = VhdResizeRequest {
+            new_virtual_size: new_size,
+            expand_only: 1,
+            allow_unsafe_virtual_size: 0,
+            shrink_to_minimum_safe_size: 0,
+        };
+
+        let mut bytes: DWord = 0;
+
+        unsafe {
+            match winapi::um::ioapiset::DeviceIoControl(
+                virtual_disk.get_handle(),
+                 2955600, // IOCTL_STORAGE_RESIZE_VIRTUAL_DISK
+                &mut request as *mut _ as PVoid,
+                std::mem::size_of::<VhdResizeRequest>() as u32,
+                std::ptr::null_mut(),
+                0,
+                &mut bytes,
+                std::ptr::null_mut(),
+            ) {
+                result if result != 0 => Ok(true),
+                result => Err(error_code_to_result_code(result as u32)),
+            }
+        }
+    } else {
+        Ok(false)
+    }
+}
