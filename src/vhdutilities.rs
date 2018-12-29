@@ -282,3 +282,17 @@ pub fn create_vhd_from_source(
 
     Ok(())
 }
+
+/// Finds the given mounted VHD and returns the resulting volume path.
+pub fn get_vhd_volume_path(virtual_disk: &VirtualDisk) -> Result<String, ResultCode> {
+    let disk_path = virtual_disk.get_physical_path()?;
+    let disk = Disk::open(
+        &disk_path,
+        None,
+        Some(
+            winapi::um::winnt::FILE_ATTRIBUTE_NORMAL | winapi::um::winbase::FILE_FLAG_NO_BUFFERING,
+        ),
+    )?;
+
+    disk.volume_path()
+}
