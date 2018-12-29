@@ -373,3 +373,9 @@ pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Resu
         }
     }
 }
+
+/// Returns the size of the VHD on the physical disk.
+pub fn get_physical_vhd_size_in_kb(virtual_disk: &VirtualDisk) -> Result<u64, ResultCode> {
+    let info_wrapper = virtual_disk.get_information(get_virtual_disk::InfoVersion::Size)?;
+    unsafe { Ok(info_wrapper.info().version_details.size.physical_size / 1024) }
+}
