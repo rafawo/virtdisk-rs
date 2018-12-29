@@ -25,7 +25,7 @@
 //!
 
 pub mod virtdisk;
-pub mod virtdisk_bindings;
+pub (crate) mod virtdisk_bindings;
 pub mod virtdiskdefs;
 
 pub mod diskutilities;
