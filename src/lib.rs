@@ -32,12 +32,12 @@
 //! - C:\Windows\System32\virtdisk.dll
 //!
 
-pub mod virtdisk;
-pub(crate) mod virtdisk_bindings;
-pub mod virtdiskdefs;
-
 pub mod diskutilities;
 pub mod vhdutilities;
+pub mod virtdisk;
+pub mod virtdiskdefs;
+
+pub(crate) mod virtdisk_bindings;
 
 #[allow(dead_code)]
 pub(crate) mod winutilities;
