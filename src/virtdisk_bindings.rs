@@ -1,3 +1,11 @@
+// Copyright © rafawo (rafawo1@hotmail.com). All rights reserved.
+// Licensed under the Apache License, Version 2.0
+// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your option.
+// All files in the project carrying such notice may not be copied, modified, or distributed
+// except according to those terms.
+// THE SOURCE CODE IS AVAILABLE UNDER THE ABOVE CHOSEN LICENSE "AS IS", WITH NO WARRANTIES.
+
 //! This module contains the C bindings to the VirtDisk APIs.
 
 use crate::virtdiskdefs::*;
@@ -20,7 +28,7 @@ extern "C" {
         virtualDiskAccessMask: VirtualDiskAccessMask,
         securityDescriptor: *const SecurityDescriptor,
         flags: u32, // create_virtual_disk::Flag
-        providerSpecificFlags: u64,
+        providerSpecificFlags: u32,
         parameters: *const create_virtual_disk::Parameters,
         overlapped: *const Overlapped,
         handle: *mut Handle,
@@ -30,7 +38,7 @@ extern "C" {
         virtualDiskHandle: Handle,
         securityDescriptor: *const SecurityDescriptor,
         flags: u32, // attach_virtual_disk::Flag
-        providerSpecificFlags: u64,
+        providerSpecificFlags: u32,
         parameters: *const attach_virtual_disk::Parameters,
         overlapped: *const Overlapped,
     ) -> DWord;
@@ -38,33 +46,33 @@ extern "C" {
     pub fn DetachVirtualDisk(
         virtualDiskHandle: Handle,
         flags: u32, // detach_virtual_disk::Flag
-        providerSpecificFlags: u64,
+        providerSpecificFlags: u32,
     ) -> DWord;
 
     pub fn GetVirtualDiskPhysicalPath(
         virtualDiskHandle: Handle,
-        diskPathSizeInBytes: *const u64,
+        diskPathSizeInBytes: *const u32,
         diskPath: PWStr,
     ) -> DWord;
 
     pub fn GetAllAttachedVirtualDiskPhysicalPaths(
-        pathsBufferSizeInBytes: *mut u64,
+        pathsBufferSizeInBytes: *mut u32,
         pathsBuffer: PWStr,
     ) -> DWord;
 
     pub fn GetStorageDependencyInformation(
         objectHandle: Handle,
         flags: u32, // storage_dependency::GetFlag
-        storageDependencyInfoSize: u64,
+        storageDependencyInfoSize: u32,
         storageDependencyInfo: *mut storage_dependency::Info,
-        sizeUsed: *mut u64,
+        sizeUsed: *mut u32,
     ) -> DWord;
 
     pub fn GetVirtualDiskInformation(
         virtualDiskHandle: Handle,
-        virtualDiskInfoSize: *const u64,
+        virtualDiskInfoSize: *mut u32,
         virtualDiskInfo: *mut get_virtual_disk::Info,
-        sizeUsed: *mut u64,
+        sizeUsed: *mut u32,
     ) -> DWord;
 
     pub fn SetVirtualDiskInformation(
@@ -74,21 +82,21 @@ extern "C" {
 
     pub fn EnumerateVirtualDiskMetadata(
         virtualDiskHandle: Handle,
-        numberOfItems: *mut u64,
+        numberOfItems: *mut u32,
         items: *mut Guid,
     ) -> DWord;
 
     pub fn GetVirtualDiskMetadata(
         VirtualDiskHandle: Handle,
         item: *const Guid,
-        metaDataSize: *mut u64,
+        metaDataSize: *mut u32,
         metaData: *mut Void,
     ) -> DWord;
 
     pub fn SetVirtualDiskMetadata(
         virtualDiskHandle: Handle,
         item: *const Guid,
-        metaDataSize: u64,
+        metaDataSize: u32,
         metaData: *const Void,
     ) -> DWord;
 
@@ -146,7 +154,7 @@ extern "C" {
         byteLength: u64,
         flags: u32, // query_changes_virtual_disk::Flag
         ranges: *mut query_changes_virtual_disk::Range,
-        rangeCount: *mut u64,
+        rangeCount: *mut u32,
         processedLength: *mut u64,
     ) -> DWord;
 

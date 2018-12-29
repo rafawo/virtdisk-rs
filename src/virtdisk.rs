@@ -1,36 +1,54 @@
+// Copyright © rafawo (rafawo1@hotmail.com). All rights reserved.
+// Licensed under the Apache License, Version 2.0
+// <LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your option.
+// All files in the project carrying such notice may not be copied, modified, or distributed
+// except according to those terms.
+// THE SOURCE CODE IS AVAILABLE UNDER THE ABOVE CHOSEN LICENSE "AS IS", WITH NO WARRANTIES.
+
 //! This module provides Rust idiomatic abstractions to the C bindings of VirtDisk.
 
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
+use crate::{error_code_to_result_code, ResultCode};
 use widestring::{WideCString, WideStr, WideString};
 
-/// Enumeration of common error codes returned from the virtdisk APIs.
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ResultCode {
-    Success,
-    InvalidParameter,
-    UnsupportedCompression,
-    FileEncrypted,
-    FileSystemLimitation,
-    FileCorrupt,
-    FileNotFound,
-    InsufficientBuffer,
-    WindowsErrorCode(DWord),
+/// Wrapper of a get_virtual_disk::Info struct that can be of a variable heap allocated length.
+pub struct GetVirtualDiskInfoWrapper {
+    raw_buffer: Vec<Byte>,
 }
 
-fn error_code_to_result_code(error_code: DWord) -> ResultCode {
-    match error_code {
-        0 => ResultCode::Success,
-        87 => ResultCode::InvalidParameter,
-        618 => ResultCode::UnsupportedCompression,
-        6002 => ResultCode::FileEncrypted,
-        665 => ResultCode::FileSystemLimitation,
-        1392 => ResultCode::FileCorrupt,
-        2 => ResultCode::FileNotFound,
-        122 => ResultCode::InsufficientBuffer,
-        error_code => ResultCode::WindowsErrorCode(error_code),
+impl GetVirtualDiskInfoWrapper {
+    /// Gets a reference to a get_virtual_disk::Info struct,
+    /// using the internal raw buffer.
+    pub fn info(&self) -> &get_virtual_disk::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_ptr()) }
+    }
+
+    /// Gets a mut reference to a get_virtual_disk::Info struct,
+    /// using the internal raw buffer.
+    pub fn info_mut(&mut self) -> &mut get_virtual_disk::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_mut_ptr()) }
+    }
+}
+
+/// Wrapper of a storage_dependency::Info struct that can be of a variable heap allocated length.
+pub struct GetStorageDependencyInformationWrapper {
+    raw_buffer: Vec<Byte>,
+}
+
+impl GetStorageDependencyInformationWrapper {
+    /// Gets a reference to a storage_dependency::Info struct,
+    /// using the internal raw buffer.
+    pub fn info(&self) -> &storage_dependency::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_ptr()) }
+    }
+
+    /// Gets a mut reference to a storage_dependency::Info struct,
+    /// using the internal raw buffer.
+    pub fn info_mut(&mut self) -> &mut storage_dependency::Info {
+        unsafe { std::mem::transmute(self.raw_buffer.as_mut_ptr()) }
     }
 }
 
@@ -42,25 +60,7 @@ pub struct VirtualDisk {
 
 impl std::ops::Drop for VirtualDisk {
     fn drop(&mut self) {
-        if self.handle == std::ptr::null_mut() {
-            return;
-        }
-
-        #[allow(unused_assignments)]
-        let mut result: Bool = 0;
-
-        unsafe {
-            result = winapi::um::handleapi::CloseHandle(self.handle);
-        }
-
-        match result {
-            result if result == 0 => {
-                panic!("Closing handle failed with error code {}", unsafe {
-                    winapi::um::errhandlingapi::GetLastError()
-                });
-            }
-            _ => {}
-        }
+        crate::winutilities::close_handle(&mut self.handle);
     }
 }
 
@@ -138,7 +138,7 @@ impl VirtualDisk {
         virtual_disk_access_mask: VirtualDiskAccessMask,
         security_descriptor: Option<SecurityDescriptor>,
         flags: u32,
-        provider_specific_flags: u64,
+        provider_specific_flags: u32,
         parameters: &create_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
     ) -> Result<VirtualDisk, ResultCode> {
@@ -179,7 +179,7 @@ impl VirtualDisk {
         &self,
         security_descriptor: Option<SecurityDescriptor>,
         flags: u32,
-        provider_specific_flags: u64,
+        provider_specific_flags: u32,
         parameters: &attach_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
     ) -> Result<(), ResultCode> {
@@ -211,7 +211,7 @@ impl VirtualDisk {
     /// Detaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate virtual disk provider to accomplish the operation.
     /// The flags are a u32 representation of any valid combination from `detach_virtual_disk::Flag` values.
-    pub fn detach(&self, flags: u32, provider_specific_flags: u64) -> Result<(), ResultCode> {
+    pub fn detach(&self, flags: u32, provider_specific_flags: u32) -> Result<(), ResultCode> {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
                 result if result == 0 => Ok(()),
@@ -222,7 +222,7 @@ impl VirtualDisk {
 
     /// Retrieves the path to the physical device object that contains a virtual hard disk (VHD) or CD or DVD image file (ISO).
     pub fn get_physical_path(&self) -> Result<String, ResultCode> {
-        const PATH_SIZE: u64 = 256; // MAX_PATH
+        const PATH_SIZE: u32 = 256; // MAX_PATH
         let mut disk_path_wstr: [WChar; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
         unsafe {
@@ -240,7 +240,7 @@ impl VirtualDisk {
     /// Retrieves the physical paths to all attached virtual disks and returns it in a vector of strings.
     pub fn get_all_attached_physical_paths() -> Result<Vec<String>, ResultCode> {
         let mut paths_buffer: Vec<WChar> = Vec::new();
-        let mut buffer_size_bytes: u64 = 0;
+        let mut buffer_size_bytes: u32 = 0;
 
         let mut paths: Vec<String> = Vec::new();
 
@@ -289,38 +289,83 @@ impl VirtualDisk {
     pub fn get_storage_dependency_information(
         &self,
         flags: u32,
-        info_size: u64,
-        info: *mut storage_dependency::Info,
-    ) -> Result<u64, ResultCode> {
-        let mut size_used: u64 = 0;
+        version: storage_dependency::InfoVersion,
+    ) -> Result<GetStorageDependencyInformationWrapper, ResultCode> {
+        let mut raw_buffer: Vec<Byte> = Vec::new();
+        let size: u32 = std::mem::size_of::<storage_dependency::Info>() as u32;
+        let mut buffer_size: u32 = size;
+        raw_buffer.reserve(buffer_size as usize);
+
+        let info_ptr = raw_buffer.as_mut_ptr() as *mut storage_dependency::Info;
 
         unsafe {
-            match GetStorageDependencyInformation(
+            (*info_ptr).version = version;
+
+            let result = GetStorageDependencyInformation(
                 self.handle,
                 flags,
-                info_size,
-                info,
-                &mut size_used,
-            ) {
-                result if result == 0 => Ok(size_used),
-                result => Err(error_code_to_result_code(result)),
+                size,
+                info_ptr,
+                &mut buffer_size,
+            );
+
+            match error_code_to_result_code(result) {
+                ResultCode::InsufficientBuffer => {
+                    raw_buffer.reserve(buffer_size as usize);
+
+                    let result = GetStorageDependencyInformation(
+                        self.handle,
+                        flags,
+                        size,
+                        info_ptr,
+                        &mut buffer_size,
+                    );
+
+                    match error_code_to_result_code(result) {
+                        ResultCode::Success => {
+                            Ok(GetStorageDependencyInformationWrapper { raw_buffer })
+                        }
+                        error => Err(error),
+                    }
+                }
+                ResultCode::Success => Ok(GetStorageDependencyInformationWrapper { raw_buffer }),
+                error => Err(error),
             }
         }
     }
 
-    /// Retrieves on the supplied info structure information of a virtual disk.
-    /// On success, returns the size used in the info structure.
+    /// Retrieves information of a virtual disk wrapped on a safe structure on top of a raw buffer.
     pub fn get_information(
         &self,
-        info_size: u64,
-        info: &mut get_virtual_disk::Info,
-    ) -> Result<u64, ResultCode> {
-        let mut size_used: u64 = 0;
+        version: get_virtual_disk::InfoVersion,
+    ) -> Result<GetVirtualDiskInfoWrapper, ResultCode> {
+        let mut size_used: u32 = 0;
+        let mut raw_buffer: Vec<Byte> = Vec::new();
+        let mut size: u32 = std::mem::size_of::<get_virtual_disk::Info>() as u32;
+        raw_buffer.reserve(size as usize);
+
+        let info_ptr = raw_buffer.as_mut_ptr() as *mut get_virtual_disk::Info;
 
         unsafe {
-            match GetVirtualDiskInformation(self.handle, &info_size, info, &mut size_used) {
-                result if result == 0 => Ok(size_used),
-                result => Err(error_code_to_result_code(result)),
+            (*info_ptr).version = version;
+
+            let result =
+                GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
+
+            match error_code_to_result_code(result) {
+                ResultCode::InsufficientBuffer => {
+                    raw_buffer.reserve(size as usize);
+
+                    let result =
+                        GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
+
+                    match error_code_to_result_code(result) {
+                        ResultCode::Success => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                        error => Err(error),
+                    }
+                }
+                ResultCode::Success => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                error => Err(error),
             }
         }
     }
@@ -340,7 +385,7 @@ impl VirtualDisk {
     /// using function `VirtualHardDisk::get_metadata`.
     pub fn enumerate_metadata(&self) -> Result<Vec<Guid>, ResultCode> {
         let mut guids: Vec<Guid> = Vec::new();
-        let mut vector_size: u64 = 0;
+        let mut vector_size: u32 = 0;
 
         unsafe {
             let result =
@@ -379,7 +424,7 @@ impl VirtualDisk {
     /// Retrieves the specified metadata from the virtual disk as an u8 byte buffer.
     pub fn get_metadata(&self, item: &Guid) -> Result<Vec<u8>, ResultCode> {
         let mut buffer: Vec<u8> = Vec::new();
-        let mut buffer_size: u64 = 0;
+        let mut buffer_size: u32 = 0;
 
         unsafe {
             let result = GetVirtualDiskMetadata(
@@ -418,7 +463,7 @@ impl VirtualDisk {
             match SetVirtualDiskMetadata(
                 self.handle,
                 item,
-                buffer.len() as u64,
+                buffer.len() as u32,
                 buffer.as_ptr() as *const Void,
             ) {
                 result if result == 0 => Ok(()),
@@ -599,8 +644,8 @@ impl VirtualDisk {
         byte_length: u64,
         flags: u32,
         ranges: &mut [query_changes_virtual_disk::Range],
-    ) -> Result<(u64, u64), ResultCode> {
-        let mut range_count: u64 = ranges.len() as u64;
+    ) -> Result<(u32, u64), ResultCode> {
+        let mut range_count: u32 = ranges.len() as u32;
         let mut processed_length: u64 = 0;
 
         unsafe {
