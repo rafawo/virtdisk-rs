@@ -6,6 +6,8 @@
 // except according to those terms.
 // THE SOURCE CODE IS AVAILABLE UNDER THE ABOVE CHOSEN LICENSE "AS IS", WITH NO WARRANTIES.
 
+//! These tests verify basic workflows of the vhdutilities module, and not the entire crate.
+
 use virtdisk_rs::vhdutilities::*;
 
 struct DeleteDiskScopeExit<'a> {
@@ -21,7 +23,7 @@ impl<'a> std::ops::Drop for DeleteDiskScopeExit<'a> {
 }
 
 #[test]
-fn dummy_test() {
+fn can_create_base_vhd() {
     let disk_path = String::from("base.vhdx");
     let _delete_file_scope_exit = DeleteDiskScopeExit {
         filepath: &disk_path,
