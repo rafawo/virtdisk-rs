@@ -10,7 +10,7 @@
 
 use crate::windefs::*;
 use crate::winutilities::*;
-use crate::{error_code_to_result_code, ResultCode};
+use crate::errorcodes::{ResultCode, error_code_to_result_code};
 
 #[allow(dead_code)]
 pub struct PartitionInfo {
@@ -76,7 +76,7 @@ impl Disk {
     /// on the end of its lifetime.
     pub fn wrap_handle(handle: Handle) -> Result<Disk, ResultCode> {
         match handle {
-            handle if handle == std::ptr::null_mut() => Err(ResultCode::InvalidParameter),
+            handle if handle == std::ptr::null_mut() => Err(ResultCode::ErrorInvalidArgument),
             handle => Ok(Disk { handle }),
         }
     }
@@ -241,7 +241,7 @@ impl Disk {
                     };
 
                     if volume_path.is_empty() {
-                        return Err(ResultCode::FileNotFound);
+                        return Err(ResultCode::ErrorFileNotFound);
                     }
 
                     break;
@@ -375,7 +375,7 @@ impl Disk {
             // pointer in its callback routine.
             FORMAT_CONTEXT = Some(FormatContext {
                 event: WinEvent::create(false, false, None, None).unwrap(),
-                result: ResultCode::Success,
+                result: ResultCode::ErrorSuccess,
             });
 
             // Unfortunately, FormatEx2 can fail if another thread is accessing the volume, perhaps
@@ -406,7 +406,7 @@ impl Disk {
                 if let Some(ref context) = FORMAT_CONTEXT {
                     context.event.wait(winapi::um::winbase::INFINITE);
                     match context.result {
-                        ResultCode::Success => {
+                        ResultCode::ErrorSuccess => {
                             return Ok(partition_info);
                         }
                         _ => {
@@ -416,7 +416,7 @@ impl Disk {
                 }
             }
 
-            Err(ResultCode::GenFailure)
+            Err(ResultCode::ErrorGenFailure)
         }
     }
 
@@ -455,7 +455,7 @@ impl Disk {
                 if winapi::shared::winerror::ERROR_INSUFFICIENT_BUFFER
                     == errhandlingapi::GetLastError()
                 {
-                    return Err(ResultCode::InsufficientBuffer);
+                    return Err(ResultCode::ErrorInsufficientBuffer);
                 }
 
                 buffer.reserve(4096);
@@ -483,7 +483,7 @@ impl Disk {
 
             // Find the last basic partition
             if (*drive_layout).PartitionStyle != winioctl::PARTITION_STYLE_GPT {
-                return Err(ResultCode::InvalidParameter);
+                return Err(ResultCode::ErrorInvalidArgument);
             }
 
             let mut partition_info: winioctl::PPARTITION_INFORMATION_EX = std::ptr::null_mut();
@@ -501,7 +501,7 @@ impl Disk {
             }
 
             if partition_info == std::ptr::null_mut() {
-                return Err(ResultCode::InvalidParameter);
+                return Err(ResultCode::ErrorInvalidArgument);
             }
 
             // Determine the new partition size and extend the partition
@@ -559,7 +559,7 @@ impl Disk {
             );
 
             if !winapi::shared::ntdef::NT_SUCCESS(ntstatus) {
-                return Err(ResultCode::GenFailure);
+                return Err(ResultCode::ErrorGenFailure);
             }
 
             // Compute the new number of clusters (rounding down) and extend the file system.

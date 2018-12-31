@@ -8,6 +8,7 @@
 
 //! These tests verify basic workflows of the vhdutilities module, and not the entire crate.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use virtdisk_rs::vhdutilities::*;
 
 struct DeleteDiskScopeExit<'a> {
@@ -22,12 +23,27 @@ impl<'a> std::ops::Drop for DeleteDiskScopeExit<'a> {
     }
 }
 
+static FILE_ID: AtomicUsize = AtomicUsize::new(0);
+
 #[test]
 fn can_create_base_vhd() {
-    let disk_path = String::from("base.vhdx");
+    let disk_path = String::from(format!("base_{}.vhdx", FILE_ID.fetch_add(1, Ordering::SeqCst)));
     let _delete_file_scope_exit = DeleteDiskScopeExit {
         filepath: &disk_path,
     };
 
-    let _mounted_volume = create_base_vhd(&disk_path, 1, 1, "NTFS");
+    let _mounted_volume = create_base_vhd(&disk_path, 1, 1, "NTFS").unwrap();
+}
+
+#[test]
+fn can_open_vhd() {
+    let disk_path = String::from(format!("base_{}.vhdx", FILE_ID.fetch_add(1, Ordering::SeqCst)));
+    let _delete_file_scope_exit = DeleteDiskScopeExit {
+        filepath: &disk_path,
+    };
+
+    let mounted_volume = create_base_vhd(&disk_path, 1, 1, "NTFS").unwrap();
+    drop(mounted_volume);
+
+    let _vhd = open_vhd(&disk_path, true).unwrap();
 }

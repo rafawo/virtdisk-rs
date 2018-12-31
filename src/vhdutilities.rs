@@ -13,7 +13,7 @@ use crate::virtdisk::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
 use crate::winutilities::*;
-use crate::{error_code_to_result_code, ResultCode};
+use crate::errorcodes::{ResultCode, error_code_to_result_code, result_code_to_error_code};
 
 pub struct MountedVolume {
     pub vhd: VirtualDisk,
@@ -301,6 +301,11 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
         {
             return Ok(String::from(""));
         }
+        Err(error)
+            if result_code_to_error_code(error) == winapi::shared::winerror::ERROR_VIRTDISK_NOT_VIRTUAL_DISK as u32 =>
+        {
+            return Ok(String::from(""));
+        }
         Err(error) => {
             return Err(error);
         }
@@ -321,7 +326,7 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
             result if result == 0 => {
                 Ok(widestring::WideCString::from_ptr_str(filename.as_ptr()).to_string_lossy())
             }
-            _ => Err(ResultCode::GenFailure),
+            _ => Err(ResultCode::ErrorGenFailure),
         }
     }
 }
@@ -440,8 +445,8 @@ pub fn merge_diff_vhd(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
         &parameters,
         Some(&overlapped),
     ) {
-        Err(ResultCode::IoPending) => wait_for_vhd_operation(&virtual_disk, &overlapped),
-        Err(ResultCode::Success) => {
+        Err(ResultCode::ErrorIoPending) => wait_for_vhd_operation(&virtual_disk, &overlapped),
+        Err(ResultCode::ErrorSuccess) => {
             panic!("Success case on a merge call with overlapped struct is unexpected!")
         }
         Err(error) => Err(error),
@@ -467,7 +472,7 @@ pub fn wait_for_vhd_operation(
             }
             winapi::shared::winerror::ERROR_OPERATION_ABORTED => {
                 // Job was canceled
-                return Err(ResultCode::OperationAborted);
+                return Err(ResultCode::ErrorOperationAborted);
             }
             error => {
                 // Job failed

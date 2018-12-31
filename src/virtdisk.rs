@@ -11,7 +11,7 @@
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
-use crate::{error_code_to_result_code, ResultCode};
+use crate::errorcodes::{ResultCode, error_code_to_result_code};
 use widestring::{WideCString, WideStr, WideString};
 
 /// Wrapper of a get_virtual_disk::Info struct that can be of a variable heap allocated length.
@@ -69,7 +69,7 @@ impl VirtualDisk {
     /// on the end of its lifetime.
     pub fn wrap_handle(handle: Handle) -> Result<VirtualDisk, ResultCode> {
         match handle {
-            handle if handle == std::ptr::null_mut() => Err(ResultCode::InvalidParameter),
+            handle if handle == std::ptr::null_mut() => Err(ResultCode::ErrorInvalidArgument),
             handle => Ok(VirtualDisk { handle }),
         }
     }
@@ -252,7 +252,7 @@ impl VirtualDisk {
             );
 
             match error_code_to_result_code(result) {
-                ResultCode::InsufficientBuffer => {
+                ResultCode::ErrorInsufficientBuffer => {
                     let buffer_size = buffer_size_bytes as usize / std::mem::size_of::<WChar>();
                     paths_buffer.resize(buffer_size, 0);
 
@@ -277,7 +277,7 @@ impl VirtualDisk {
                         result => Err(error_code_to_result_code(result)),
                     }
                 }
-                ResultCode::Success => Ok(paths),
+                ResultCode::ErrorSuccess => Ok(paths),
                 error => Err(error),
             }
         }
@@ -310,7 +310,7 @@ impl VirtualDisk {
             );
 
             match error_code_to_result_code(result) {
-                ResultCode::InsufficientBuffer => {
+                ResultCode::ErrorInsufficientBuffer => {
                     raw_buffer.reserve(buffer_size as usize);
 
                     let result = GetStorageDependencyInformation(
@@ -322,13 +322,13 @@ impl VirtualDisk {
                     );
 
                     match error_code_to_result_code(result) {
-                        ResultCode::Success => {
+                        ResultCode::ErrorSuccess => {
                             Ok(GetStorageDependencyInformationWrapper { raw_buffer })
                         }
                         error => Err(error),
                     }
                 }
-                ResultCode::Success => Ok(GetStorageDependencyInformationWrapper { raw_buffer }),
+                ResultCode::ErrorSuccess => Ok(GetStorageDependencyInformationWrapper { raw_buffer }),
                 error => Err(error),
             }
         }
@@ -353,18 +353,18 @@ impl VirtualDisk {
                 GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
 
             match error_code_to_result_code(result) {
-                ResultCode::InsufficientBuffer => {
+                ResultCode::ErrorInsufficientBuffer => {
                     raw_buffer.reserve(size as usize);
 
                     let result =
                         GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
 
                     match error_code_to_result_code(result) {
-                        ResultCode::Success => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                        ResultCode::ErrorSuccess => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
                         error => Err(error),
                     }
                 }
-                ResultCode::Success => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                ResultCode::ErrorSuccess => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
                 error => Err(error),
             }
         }
@@ -392,7 +392,7 @@ impl VirtualDisk {
                 EnumerateVirtualDiskMetadata(self.handle, &mut vector_size, guids.as_mut_ptr());
 
             match error_code_to_result_code(result) {
-                ResultCode::InsufficientBuffer => {
+                ResultCode::ErrorInsufficientBuffer => {
                     guids.resize(
                         vector_size as usize,
                         Guid {
@@ -415,7 +415,7 @@ impl VirtualDisk {
                         result => Err(error_code_to_result_code(result)),
                     }
                 }
-                ResultCode::Success => Ok(guids),
+                ResultCode::ErrorSuccess => Ok(guids),
                 error => Err(error),
             }
         }
@@ -435,7 +435,7 @@ impl VirtualDisk {
             );
 
             match error_code_to_result_code(result) {
-                ResultCode::InsufficientBuffer => {
+                ResultCode::ErrorInsufficientBuffer => {
                     buffer.resize(buffer_size as usize, 0);
 
                     match GetVirtualDiskMetadata(
@@ -451,7 +451,7 @@ impl VirtualDisk {
                         result => Err(error_code_to_result_code(result)),
                     }
                 }
-                ResultCode::Success => Ok(buffer),
+                ResultCode::ErrorSuccess => Ok(buffer),
                 error => Err(error),
             }
         }

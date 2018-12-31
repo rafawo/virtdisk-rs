@@ -30,7 +30,7 @@ The relevant Windows 10 SDK files that this project is wrapping are:
 - C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0\um\x64\virtdisk.lib
 - C:\Windows\System32\virtdisk.dll
 - C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\km\ntifs.h
-  - Only *NtQueryVolumeInformationFile* API.
+  - Only *NtQueryVolumeInformationFile* **API**.
 - C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0\km\x64\ntoskrnl.lib
 
 ## How to use locally

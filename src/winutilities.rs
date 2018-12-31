@@ -7,7 +7,7 @@
 // THE SOURCE CODE IS AVAILABLE UNDER THE ABOVE CHOSEN LICENSE "AS IS", WITH NO WARRANTIES.
 
 use crate::windefs::*;
-use crate::{error_code_to_result_code, ResultCode};
+use crate::errorcodes::{ResultCode, error_code_to_result_code};
 
 pub fn close_handle(handle: &mut Handle) {
     if *handle == std::ptr::null_mut() {
@@ -39,7 +39,7 @@ pub fn create_file(
     creation_disposition: DWord,
     flags_and_attributes: DWord,
     template_file: Option<Handle>,
-) -> Result<Handle, crate::ResultCode> {
+) -> Result<Handle, ResultCode> {
     let security_descriptor_ptr = match security_descriptor {
         Some(security_descriptor) => security_descriptor,
         None => std::ptr::null_mut(),
@@ -63,7 +63,7 @@ pub fn create_file(
 
         match handle {
             handle if handle != std::ptr::null_mut() => Ok(handle),
-            _handle => Err(crate::ResultCode::FileNotFound),
+            _handle => Err(ResultCode::ErrorFileNotFound),
         }
     }
 }
@@ -491,13 +491,13 @@ pub extern "C" fn format_ex2_callback(
             unsafe {
                 if let Some(ref mut context) = FORMAT_CONTEXT {
                     context.result = match info.success {
-                        result if result != 0 => ResultCode::Success,
+                        result if result != 0 => ResultCode::ErrorSuccess,
                         _ => error_code_to_result_code(info.final_result),
                     };
 
                     if info.success != 0 && info.final_result == 0 {
                         // Format can fail without populating the FinalResult parameter, just assume general failure
-                        context.result = ResultCode::GenFailure;
+                        context.result = ResultCode::ErrorGenFailure;
                     }
 
                     match context.event.set() {
@@ -523,7 +523,7 @@ pub fn create_guid() -> Result<Guid, ResultCode> {
     unsafe {
         match UuidCreate(&mut guid) {
             0 => Ok(guid),
-            error_code => Err(ResultCode::WindowsErrorCode(error_code as u32)),
+            error_code => Err(error_code_to_result_code(error_code as u32)),
         }
     }
 }

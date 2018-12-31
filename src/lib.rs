@@ -33,6 +33,7 @@
 //!
 
 pub mod diskutilities;
+pub mod errorcodes;
 pub mod vhdutilities;
 pub mod virtdisk;
 pub mod virtdiskdefs;
@@ -78,41 +79,4 @@ pub mod windefs {
         Data3: 0x0000,
         Data4: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
     };
-}
-
-/// Enumeration of common error codes returned from the virtdisk APIs.
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ResultCode {
-    Success,
-    InvalidParameter,
-    UnsupportedCompression,
-    FileEncrypted,
-    FileSystemLimitation,
-    FileCorrupt,
-    FileNotFound,
-    InsufficientBuffer,
-    Timeout,
-    OperationAborted,
-    IoPending,
-    GenFailure,
-    WindowsErrorCode(windefs::DWord),
-}
-
-pub(crate) fn error_code_to_result_code(error_code: windefs::DWord) -> ResultCode {
-    match error_code {
-        0 => ResultCode::Success,
-        87 => ResultCode::InvalidParameter,
-        618 => ResultCode::UnsupportedCompression,
-        6002 => ResultCode::FileEncrypted,
-        665 => ResultCode::FileSystemLimitation,
-        1392 => ResultCode::FileCorrupt,
-        2 => ResultCode::FileNotFound,
-        122 => ResultCode::InsufficientBuffer,
-        1460 => ResultCode::Timeout,
-        955 => ResultCode::OperationAborted,
-        997 => ResultCode::IoPending,
-        31 => ResultCode::GenFailure,
-        error_code => ResultCode::WindowsErrorCode(error_code),
-    }
 }
