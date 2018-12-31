@@ -640,7 +640,7 @@ impl std::ops::Drop for TemporaryPrivilege {
         }
 
         if self.impersonating_self {
-            if unsafe { winapi::um::securitybaseapi::RevertToSelf() } != 0 {
+            if unsafe { winapi::um::securitybaseapi::RevertToSelf() } == 0 {
                 panic!("Failed to revert impersonation to self!");
             }
         }
