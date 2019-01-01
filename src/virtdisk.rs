@@ -226,15 +226,15 @@ impl VirtualDisk {
         let mut disk_path_wstr: [WChar; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
         unsafe {
-            match GetVirtualDiskPhysicalPath(
-                self.handle,
-                &mut PATH_SIZE,
-                disk_path_wstr.as_mut_ptr(),
-            ) {
+            let wchar_size = std::mem::size_of::<WChar>() as u32;
+            let mut bytes = PATH_SIZE * wchar_size;
+            match GetVirtualDiskPhysicalPath(self.handle, &mut bytes, disk_path_wstr.as_mut_ptr()) {
                 result if result == 0 => {
-                    let mut string =
-                        WideString::from_ptr(disk_path_wstr.as_ptr(), PATH_SIZE as usize)
-                            .to_string_lossy();
+                    let mut string = WideString::from_ptr(
+                        disk_path_wstr.as_ptr(),
+                        ((bytes / wchar_size) - 1) as usize,
+                    )
+                    .to_string_lossy();
                     string.shrink_to_fit();
                     Ok(string)
                 }

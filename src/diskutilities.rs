@@ -127,6 +127,8 @@ impl Disk {
             normalized_disk_path.pop();
         }
 
+        normalized_disk_path.shrink_to_fit();
+
         match create_file(
             normalized_disk_path.as_str(),
             access_mask_flags,
