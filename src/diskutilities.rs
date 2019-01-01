@@ -167,10 +167,10 @@ impl Disk {
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
             ) {
-                error if error != 0 => Ok(()),
-                _ => Err(error_code_to_result_code(
+                0 => Err(error_code_to_result_code(
                     winapi::um::errhandlingapi::GetLastError(),
                 )),
+                _ => Ok(()),
             }
         }
     }
@@ -734,7 +734,7 @@ impl std::ops::Drop for SafeFindVolumeHandle {
         }
 
         match result {
-            result if result == 0 => {
+            0 => {
                 panic!("Closing handle failed with error code {}", unsafe {
                     winapi::um::errhandlingapi::GetLastError()
                 });

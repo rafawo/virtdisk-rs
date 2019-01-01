@@ -121,7 +121,7 @@ impl VirtualDisk {
                 parameters_ptr,
                 &mut handle,
             ) {
-                result if result == 0 => Ok(VirtualDisk { handle }),
+                0 => Ok(VirtualDisk { handle }),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -166,7 +166,7 @@ impl VirtualDisk {
                 overlapped_ptr,
                 &mut handle,
             ) {
-                result if result == 0 => Ok(VirtualDisk { handle }),
+                0 => Ok(VirtualDisk { handle }),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -202,7 +202,7 @@ impl VirtualDisk {
                 parameters,
                 overlapped_ptr,
             ) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -214,7 +214,7 @@ impl VirtualDisk {
     pub fn detach(&self, flags: u32, provider_specific_flags: u32) -> Result<(), ResultCode> {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -229,7 +229,7 @@ impl VirtualDisk {
             let wchar_size = std::mem::size_of::<WChar>() as u32;
             let mut bytes = PATH_SIZE * wchar_size;
             match GetVirtualDiskPhysicalPath(self.handle, &mut bytes, disk_path_wstr.as_mut_ptr()) {
-                result if result == 0 => {
+                0 => {
                     let mut string = WideString::from_ptr(
                         disk_path_wstr.as_ptr(),
                         ((bytes / wchar_size) - 1) as usize,
@@ -266,7 +266,7 @@ impl VirtualDisk {
                         &mut buffer_size_bytes,
                         paths_buffer.as_mut_ptr(),
                     ) {
-                        result if result == 0 => {
+                        0 => {
                             assert_eq!(
                                 buffer_size * std::mem::size_of::<WChar>(),
                                 buffer_size_bytes as usize
@@ -384,7 +384,7 @@ impl VirtualDisk {
     pub fn set_information(&self, info: &set_virtual_disk::Info) -> Result<(), ResultCode> {
         unsafe {
             match SetVirtualDiskInformation(self.handle, info) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -418,7 +418,7 @@ impl VirtualDisk {
                         &mut vector_size,
                         guids.as_mut_ptr(),
                     ) {
-                        result if result == 0 => {
+                        0 => {
                             assert_eq!(vector_size as usize, guids.len());
                             Ok(guids)
                         }
@@ -454,7 +454,7 @@ impl VirtualDisk {
                         &mut buffer_size,
                         buffer.as_mut_ptr() as *mut Void,
                     ) {
-                        result if result == 0 => {
+                        0 => {
                             assert_eq!(buffer_size as usize, buffer.len());
                             Ok(buffer)
                         }
@@ -476,7 +476,7 @@ impl VirtualDisk {
                 buffer.len() as u32,
                 buffer.as_ptr() as *const Void,
             ) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -486,7 +486,7 @@ impl VirtualDisk {
     pub fn delete_metadata(&self, item: &Guid) -> Result<(), ResultCode> {
         unsafe {
             match DeleteVirtualDiskMetadata(self.handle, item) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -505,7 +505,7 @@ impl VirtualDisk {
 
         unsafe {
             match GetVirtualDiskOperationProgress(self.handle, overlapped, &mut progress) {
-                result if result == 0 => Ok(progress),
+                0 => Ok(progress),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -526,7 +526,7 @@ impl VirtualDisk {
 
         unsafe {
             match CompactVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -547,7 +547,7 @@ impl VirtualDisk {
 
         unsafe {
             match MergeVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -568,7 +568,7 @@ impl VirtualDisk {
 
         unsafe {
             match ExpandVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -589,7 +589,7 @@ impl VirtualDisk {
 
         unsafe {
             match ResizeVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -611,7 +611,7 @@ impl VirtualDisk {
     ) -> Result<(), ResultCode> {
         unsafe {
             match MirrorVirtualDisk(self.handle, flags, parameters, overlapped) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -621,7 +621,7 @@ impl VirtualDisk {
     pub fn break_mirror(&self) -> Result<(), ResultCode> {
         unsafe {
             match BreakMirrorVirtualDisk(self.handle) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -634,7 +634,7 @@ impl VirtualDisk {
                 self.handle,
                 WideCString::from_str(parent_path).unwrap().as_ptr(),
             ) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -669,7 +669,7 @@ impl VirtualDisk {
                 &mut range_count,
                 &mut processed_length,
             ) {
-                result if result == 0 => Ok((range_count, processed_length)),
+                0 => Ok((range_count, processed_length)),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -684,7 +684,7 @@ impl VirtualDisk {
     ) -> Result<(), ResultCode> {
         unsafe {
             match TakeSnapshotVhdSet(self.handle, parameters, flags) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -699,7 +699,7 @@ impl VirtualDisk {
     ) -> Result<(), ResultCode> {
         unsafe {
             match DeleteSnapshotVhdSet(self.handle, parameters, flags) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -715,7 +715,7 @@ impl VirtualDisk {
     ) -> Result<(), ResultCode> {
         unsafe {
             match ModifyVhdSet(self.handle, parameters, flags) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -730,7 +730,7 @@ impl VirtualDisk {
     ) -> Result<(), ResultCode> {
         unsafe {
             match ApplySnapshotVhdSet(self.handle, parameters, flags) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -756,7 +756,7 @@ impl VirtualDisk {
 
         unsafe {
             match RawSCSIVirtualDisk(self.handle, parameters, flags, &mut response) {
-                result if result == 0 => Ok(response),
+                0 => Ok(response),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -773,7 +773,7 @@ impl VirtualDisk {
     ) -> Result<(), ResultCode> {
         unsafe {
             match ForkVirtualDisk(self.handle, flags, parameters, overlapped) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -783,7 +783,7 @@ impl VirtualDisk {
     pub fn complete_fork(&self) -> Result<(), ResultCode> {
         unsafe {
             match CompleteForkVirtualDisk(self.handle) {
-                result if result == 0 => Ok(()),
+                0 => Ok(()),
                 result => Err(error_code_to_result_code(result)),
             }
         }

@@ -324,7 +324,7 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
             dependency_info_wrapper.info().version_details.version2[0]
                 .dependent_volume_relative_path,
         ) {
-            result if result == 0 => {
+            0 => {
                 let mut string =
                     widestring::WideCString::from_ptr_str(filename.as_ptr()).to_string_lossy();
                 string.shrink_to_fit();
@@ -361,8 +361,8 @@ pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Resu
             &mut bytes,
             std::ptr::null_mut(),
         ) {
-            result if result != 0 => Ok(()),
-            result => Err(error_code_to_result_code(result as u32)),
+            result if result != 0 => Err(error_code_to_result_code(winapi::um::errhandlingapi::GetLastError())),
+            _ => Ok(()),
         }
     }
 }
@@ -421,8 +421,8 @@ pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, Res
                 &mut bytes,
                 std::ptr::null_mut(),
             ) {
-                result if result != 0 => Ok(true),
-                result => Err(error_code_to_result_code(result as u32)),
+                0 => Err(error_code_to_result_code(winapi::um::errhandlingapi::GetLastError())),
+                _ => Ok(true),
             }
         }
     } else {

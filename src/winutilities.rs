@@ -22,7 +22,7 @@ pub fn close_handle(handle: &mut Handle) {
     }
 
     match result {
-        result if result == 0 => {
+        0 => {
             panic!("Closing handle failed with error code {}", unsafe {
                 winapi::um::errhandlingapi::GetLastError()
             });
@@ -238,7 +238,7 @@ impl WinEvent {
     pub fn set(&self) -> Result<(), ResultCode> {
         unsafe {
             match winapi::um::synchapi::SetEvent(self.handle) {
-                result if result != 0 => {
+                0 => {
                     return Err(error_code_to_result_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ))
@@ -251,7 +251,7 @@ impl WinEvent {
     pub fn reset(&self) -> Result<(), ResultCode> {
         unsafe {
             match winapi::um::synchapi::ResetEvent(self.handle) {
-                result if result != 0 => {
+                0 => {
                     return Err(error_code_to_result_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ))
@@ -264,7 +264,7 @@ impl WinEvent {
     pub fn pulse(&self) -> Result<(), ResultCode> {
         unsafe {
             match winapi::um::winbase::PulseEvent(self.handle) {
-                result if result != 0 => {
+                0 => {
                     return Err(error_code_to_result_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ))
@@ -298,7 +298,7 @@ impl std::ops::Drop for WinLibrary {
     fn drop(&mut self) {
         unsafe {
             match winapi::um::libloaderapi::FreeLibrary(self.handle) {
-                result if result != 0 => {
+                0 => {
                     panic!(
                         "Failed to free library with error code {}",
                         winapi::um::errhandlingapi::GetLastError(),
@@ -696,7 +696,7 @@ impl TemporaryPrivilege {
                 {
                     let error = errhandlingapi::GetLastError();
 
-                    if securitybaseapi::RevertToSelf() != 0 {
+                    if securitybaseapi::RevertToSelf() == 0 {
                         panic!("Failed to revert impersonation to self!");
                     }
 
