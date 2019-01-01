@@ -187,8 +187,10 @@ impl Disk {
             filter.u.DeviceInterface_mut().ClassGuid = winioctl::GUID_DEVINTERFACE_VOLUME;
         }
 
+        let mut event = WinEvent::create(false, false, None, None).unwrap();
+
         let mut context = VolumeArrivalCallbackContext {
-            event: WinEvent::create(false, false, None, None).unwrap(),
+            event: &mut event,
             path_result: Ok(String::new()),
             disk_handle: self.handle,
         };
@@ -832,8 +834,8 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
 }
 
 /// Context structure used for asynchronous volume arrival.
-struct VolumeArrivalCallbackContext {
-    event: WinEvent,
+struct VolumeArrivalCallbackContext<'event> {
+    event: &'event mut WinEvent,
     path_result: Result<String, ResultCode>,
     disk_handle: Handle,
 }
