@@ -167,7 +167,7 @@ impl Disk {
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
             ) {
-                0 => Ok(()),
+                error if error != 0 => Ok(()),
                 _ => Err(error_code_to_result_code(
                     winapi::um::errhandlingapi::GetLastError(),
                 )),
