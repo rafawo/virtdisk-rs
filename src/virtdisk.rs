@@ -226,7 +226,7 @@ impl VirtualDisk {
         let mut disk_path_wstr: [WChar; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
         unsafe {
-            match GetVirtualDiskPhysicalPath(self.handle, &PATH_SIZE, disk_path_wstr.as_mut_ptr()) {
+            match GetVirtualDiskPhysicalPath(self.handle, &mut PATH_SIZE, disk_path_wstr.as_mut_ptr()) {
                 result if result == 0 => Ok(WideString::from_ptr(
                     disk_path_wstr.as_ptr(),
                     PATH_SIZE as usize,
@@ -759,7 +759,7 @@ impl VirtualDisk {
         &self,
         flags: u32,
         parameters: &fork_virtual_disk::Parameters,
-        overlapped: &Overlapped,
+        overlapped: &mut Overlapped,
     ) -> Result<(), ResultCode> {
         unsafe {
             match ForkVirtualDisk(self.handle, flags, parameters, overlapped) {

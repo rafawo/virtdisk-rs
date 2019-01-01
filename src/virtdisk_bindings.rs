@@ -51,7 +51,7 @@ extern "C" {
 
     pub fn GetVirtualDiskPhysicalPath(
         virtualDiskHandle: Handle,
-        diskPathSizeInBytes: *const u32,
+        diskPathSizeInBytes: *mut u32,
         diskPath: PWStr,
     ) -> DWord;
 
@@ -193,7 +193,7 @@ extern "C" {
         virtualDiskHandle: Handle,
         flags: u32, // fork_virtual_disk::Flag
         parameters: *const fork_virtual_disk::Parameters,
-        overlapped: *const Overlapped,
+        overlapped: *mut Overlapped,
     ) -> DWord;
 
     pub fn CompleteForkVirtualDisk(virtualDiskHandle: Handle) -> DWord;
