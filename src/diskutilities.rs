@@ -795,7 +795,6 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
 
             if volume_name.chars().last().unwrap() == '\\' {
                 volume_name.pop();
-                volume_name.push('\0');
             }
 
             if let Ok(volume) = Volume::open(&volume_name, Some(0)) {
