@@ -9,11 +9,11 @@
 //! Wrappers around basic VHD functions used to setup container storage.
 
 use crate::diskutilities::*;
+use crate::errorcodes::{error_code_to_result_code, result_code_to_error_code, ResultCode};
 use crate::virtdisk::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
 use crate::winutilities::*;
-use crate::errorcodes::{ResultCode, error_code_to_result_code, result_code_to_error_code};
 
 pub struct MountedVolume {
     pub vhd: VirtualDisk,
@@ -302,7 +302,8 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
             return Ok(String::from(""));
         }
         Err(error)
-            if result_code_to_error_code(error) == winapi::shared::winerror::ERROR_VIRTDISK_NOT_VIRTUAL_DISK as u32 =>
+            if result_code_to_error_code(error)
+                == winapi::shared::winerror::ERROR_VIRTDISK_NOT_VIRTUAL_DISK as u32 =>
         {
             return Ok(String::from(""));
         }
@@ -324,7 +325,10 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
                 .dependent_volume_relative_path,
         ) {
             result if result == 0 => {
-                Ok(widestring::WideCString::from_ptr_str(filename.as_ptr()).to_string_lossy())
+                let mut string =
+                    widestring::WideCString::from_ptr_str(filename.as_ptr()).to_string_lossy();
+                string.shrink_to_fit();
+                Ok(string)
             }
             _ => Err(ResultCode::ErrorGenFailure),
         }

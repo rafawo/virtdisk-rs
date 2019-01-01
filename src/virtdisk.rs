@@ -8,10 +8,10 @@
 
 //! This module provides Rust idiomatic abstractions to the C bindings of VirtDisk.
 
+use crate::errorcodes::{error_code_to_result_code, ResultCode};
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
 use crate::windefs::*;
-use crate::errorcodes::{ResultCode, error_code_to_result_code};
 use widestring::{WideCString, WideStr, WideString};
 
 /// Wrapper of a get_virtual_disk::Info struct that can be of a variable heap allocated length.
@@ -226,12 +226,18 @@ impl VirtualDisk {
         let mut disk_path_wstr: [WChar; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
         unsafe {
-            match GetVirtualDiskPhysicalPath(self.handle, &mut PATH_SIZE, disk_path_wstr.as_mut_ptr()) {
-                result if result == 0 => Ok(WideString::from_ptr(
-                    disk_path_wstr.as_ptr(),
-                    PATH_SIZE as usize,
-                )
-                .to_string_lossy()),
+            match GetVirtualDiskPhysicalPath(
+                self.handle,
+                &mut PATH_SIZE,
+                disk_path_wstr.as_mut_ptr(),
+            ) {
+                result if result == 0 => {
+                    let mut string =
+                        WideString::from_ptr(disk_path_wstr.as_ptr(), PATH_SIZE as usize)
+                            .to_string_lossy();
+                    string.shrink_to_fit();
+                    Ok(string)
+                }
                 result => Err(error_code_to_result_code(result)),
             }
         }
@@ -268,7 +274,9 @@ impl VirtualDisk {
 
                             for string in paths_buffer.as_slice().split(|element| *element == 0) {
                                 if !string.is_empty() {
-                                    paths.push(WideStr::from_slice(string).to_string_lossy());
+                                    let mut string = WideStr::from_slice(string).to_string_lossy();
+                                    string.shrink_to_fit();
+                                    paths.push(string);
                                 }
                             }
 
@@ -328,7 +336,9 @@ impl VirtualDisk {
                         error => Err(error),
                     }
                 }
-                ResultCode::ErrorSuccess => Ok(GetStorageDependencyInformationWrapper { raw_buffer }),
+                ResultCode::ErrorSuccess => {
+                    Ok(GetStorageDependencyInformationWrapper { raw_buffer })
+                }
                 error => Err(error),
             }
         }

@@ -27,7 +27,10 @@ static FILE_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[test]
 fn can_create_base_vhd() {
-    let disk_path = String::from(format!("base_{}.vhdx", FILE_ID.fetch_add(1, Ordering::SeqCst)));
+    let disk_path = String::from(format!(
+        "base_{}.vhdx",
+        FILE_ID.fetch_add(1, Ordering::SeqCst)
+    ));
     let _delete_file_scope_exit = DeleteDiskScopeExit {
         filepath: &disk_path,
     };
@@ -37,7 +40,10 @@ fn can_create_base_vhd() {
 
 #[test]
 fn can_open_vhd() {
-    let disk_path = String::from(format!("base_{}.vhdx", FILE_ID.fetch_add(1, Ordering::SeqCst)));
+    let disk_path = String::from(format!(
+        "base_{}.vhdx",
+        FILE_ID.fetch_add(1, Ordering::SeqCst)
+    ));
     let _delete_file_scope_exit = DeleteDiskScopeExit {
         filepath: &disk_path,
     };

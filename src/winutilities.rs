@@ -6,8 +6,8 @@
 // except according to those terms.
 // THE SOURCE CODE IS AVAILABLE UNDER THE ABOVE CHOSEN LICENSE "AS IS", WITH NO WARRANTIES.
 
+use crate::errorcodes::{error_code_to_result_code, ResultCode};
 use crate::windefs::*;
-use crate::errorcodes::{ResultCode, error_code_to_result_code};
 
 pub fn close_handle(handle: &mut Handle) {
     if *handle == std::ptr::null_mut() {

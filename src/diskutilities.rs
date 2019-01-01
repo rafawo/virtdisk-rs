@@ -8,9 +8,9 @@
 
 //! Wrappers around basic disk functions used to setup container storage.
 
+use crate::errorcodes::{error_code_to_result_code, ResultCode};
 use crate::windefs::*;
 use crate::winutilities::*;
-use crate::errorcodes::{ResultCode, error_code_to_result_code};
 
 #[allow(dead_code)]
 pub struct PartitionInfo {
@@ -789,6 +789,7 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
             let volume_name_wstr =
                 widestring::WideCString::from_ptr_str(volume_name_buffer.as_ptr());
             let mut volume_name = volume_name_wstr.to_string_lossy();
+            volume_name.shrink_to_fit();
 
             if volume_name.chars().last().unwrap() == '\\' {
                 volume_name.pop();
