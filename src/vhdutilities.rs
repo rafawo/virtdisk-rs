@@ -361,7 +361,9 @@ pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Resu
             &mut bytes,
             std::ptr::null_mut(),
         ) {
-            result if result != 0 => Err(error_code_to_result_code(winapi::um::errhandlingapi::GetLastError())),
+            0 => Err(error_code_to_result_code(
+                winapi::um::errhandlingapi::GetLastError(),
+            )),
             _ => Ok(()),
         }
     }
@@ -421,7 +423,9 @@ pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, Res
                 &mut bytes,
                 std::ptr::null_mut(),
             ) {
-                0 => Err(error_code_to_result_code(winapi::um::errhandlingapi::GetLastError())),
+                0 => Err(error_code_to_result_code(
+                    winapi::um::errhandlingapi::GetLastError(),
+                )),
                 _ => Ok(true),
             }
         }
