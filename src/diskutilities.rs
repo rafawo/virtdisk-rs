@@ -811,7 +811,7 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
                     std::mem::size_of::<winioctl::VOLUME_DISK_EXTENTS>() as DWord,
                     &mut bytes,
                     std::ptr::null_mut(),
-                ) == 0
+                ) != 0
                 {
                     if extents.Extents[0].DiskNumber == dev_number.device_number {
                         return Ok(volume_name);
