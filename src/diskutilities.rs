@@ -461,12 +461,12 @@ impl Disk {
                 std::mem::size_of::<ExpectedLayout>() as DWord,
                 &mut bytes_returned,
                 std::ptr::null_mut(),
-            ) != 0
+            ) == 0
             {
-                if winapi::shared::winerror::ERROR_INSUFFICIENT_BUFFER
-                    == errhandlingapi::GetLastError()
-                {
-                    return Err(ResultCode::ErrorInsufficientBuffer);
+                let error = errhandlingapi::GetLastError();
+
+                if winapi::shared::winerror::ERROR_INSUFFICIENT_BUFFER != error {
+                    return Err(error_code_to_result_code(error));
                 }
 
                 buffer.reserve(4096);
