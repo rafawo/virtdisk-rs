@@ -477,6 +477,7 @@ pub struct FormatContext {
     pub result: ResultCode,
 }
 
+pub static mut FORMAT_CONTEXT_LOCK: Option<std::sync::Mutex<u32>> = None;
 pub static mut FORMAT_CONTEXT: Option<FormatContext> = None;
 
 pub extern "C" fn format_ex2_callback(
@@ -495,7 +496,7 @@ pub extern "C" fn format_ex2_callback(
                         _ => error_code_to_result_code(info.final_result),
                     };
 
-                    if info.success != 0 && info.final_result == 0 {
+                    if info.success == 0 && info.final_result == 0 {
                         // Format can fail without populating the FinalResult parameter, just assume general failure
                         context.result = ResultCode::ErrorGenFailure;
                     }

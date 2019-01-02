@@ -379,8 +379,13 @@ impl Disk {
 
             // This uses a static initialized context since FormatEx2 does not provide a context
             // pointer in its callback routine.
+            let _lock = FORMAT_CONTEXT_LOCK
+                .get_or_insert(std::sync::Mutex::new(0))
+                .lock()
+                .unwrap();
+
             FORMAT_CONTEXT = Some(FormatContext {
-                event: WinEvent::create(false, false, None, None).unwrap(),
+                event: WinEvent::create(true, false, None, None).unwrap(),
                 result: ResultCode::ErrorSuccess,
             });
 
