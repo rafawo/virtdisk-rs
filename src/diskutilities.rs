@@ -572,7 +572,7 @@ impl Disk {
             );
 
             if !winapi::shared::ntdef::NT_SUCCESS(ntstatus) {
-                return Err(ResultCode::ErrorGenFailure);
+                return Err(error_code_to_result_code(ntstatus as u32));
             }
 
             // Compute the new number of clusters (rounding down) and extend the file system.
