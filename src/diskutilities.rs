@@ -257,12 +257,14 @@ impl Disk {
                     break;
                 }
             }
+
+            if volume_path.is_empty() {
+                return Err(ResultCode::ErrorTimeout);
+            }
         }
 
-        match force_online_volume(&volume_path) {
-            Ok(()) => Ok(volume_path),
-            Err(error) => Err(error),
-        }
+        let _result = force_online_volume(&volume_path);
+        Ok(volume_path)
     }
 
     /// Initializes, partitions, and formats the given disk into a single volume.
