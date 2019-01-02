@@ -507,6 +507,7 @@ impl Disk {
                     &PARTITION_BASIC_DATA_GUID,
                 ) {
                     partition_info = drive_layout_ptr;
+                    break;
                 }
                 drive_layout_ptr = drive_layout_ptr.offset(1);
             }
