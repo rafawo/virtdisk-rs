@@ -53,3 +53,20 @@ fn can_open_vhd() {
 
     let _vhd = open_vhd(&disk_path, true).unwrap();
 }
+
+#[test]
+fn can_expand_vhd() {
+    let disk_path = String::from(format!(
+        "base_{}.vhdx",
+        FILE_ID.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _delete_file_scope_exit = DeleteDiskScopeExit {
+        filepath: &disk_path,
+    };
+
+    let mounted_volume = create_base_vhd(&disk_path, 20, 32, "NTFS").unwrap();
+    drop(mounted_volume);
+
+    let vhd = open_vhd(&disk_path, false).unwrap();
+    assert!(expand_vhd(&vhd, 50 * 1024 * 1024 * 1024).unwrap());
+}
