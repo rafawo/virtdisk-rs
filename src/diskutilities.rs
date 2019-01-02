@@ -237,7 +237,7 @@ impl Disk {
             // 4. Keep doing this until the volume comes online, or until we reach the timeout.
             //
             loop {
-                let _result = force_online_disk(self.handle);
+                force_online_disk(self.handle)?;
 
                 if context.event.wait(force_online_interval) == WinEventResult::WaitObject0 {
                     volume_path = match *context.path_result {
@@ -264,7 +264,7 @@ impl Disk {
             }
         }
 
-        let _result = force_online_volume(&volume_path);
+        force_online_volume(&volume_path)?;
         Ok(volume_path)
     }
 
