@@ -245,7 +245,7 @@ impl Disk {
                     };
 
                     if volume_path.is_empty() {
-                        return Err(ResultCode::ErrorFileNotFound);
+                        return Ok(String::new());
                     }
 
                     break;
@@ -259,7 +259,7 @@ impl Disk {
             }
 
             if volume_path.is_empty() {
-                return Err(ResultCode::ErrorTimeout);
+                return Ok(String::new());
             }
         }
 
