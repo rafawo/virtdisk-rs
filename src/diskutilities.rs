@@ -188,10 +188,11 @@ impl Disk {
         }
 
         let mut event = WinEvent::create(false, false, None, None).unwrap();
+        let mut path_result = Ok(String::new());
 
         let mut context = VolumeArrivalCallbackContext {
             event: &mut event,
-            path_result: Ok(String::new()),
+            path_result: &mut path_result,
             disk_handle: self.handle,
         };
 
@@ -239,8 +240,8 @@ impl Disk {
                 let _result = force_online_disk(self.handle);
 
                 if context.event.wait(force_online_interval) == WinEventResult::WaitObject0 {
-                    volume_path = match context.path_result {
-                        Ok(path) => path,
+                    volume_path = match *context.path_result {
+                        Ok(ref path) => String::from(path.as_str()),
                         Err(error) => return Err(error),
                     };
 
@@ -842,9 +843,9 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
 }
 
 /// Context structure used for asynchronous volume arrival.
-struct VolumeArrivalCallbackContext<'event> {
+struct VolumeArrivalCallbackContext<'event, 'result> {
     event: &'event mut WinEvent,
-    path_result: Result<String, ResultCode>,
+    path_result: &'result mut Result<String, ResultCode>,
     disk_handle: Handle,
 }
 
@@ -859,15 +860,20 @@ unsafe extern "system" fn volume_arrival_callback(
     _: DWord,
 ) -> DWord {
     if action == winapi::um::cfgmgr32::CM_NOTIFY_ACTION_DEVICEINTERFACEARRIVAL {
-        let mut callback_context: VolumeArrivalCallbackContext = std::ptr::read(context as *mut _);
-        callback_context.path_result = try_get_disk_volume_path(callback_context.disk_handle);
+        let callback_context: VolumeArrivalCallbackContext = std::ptr::read(context as *mut _);
+        *callback_context.path_result = try_get_disk_volume_path(callback_context.disk_handle);
 
         #[allow(unused_must_use)]
         {
             match callback_context.path_result {
-                Ok(ref path) if !path.is_empty() => callback_context.event.set(),
-                Err(_) => callback_context.event.set(),
-                Ok(_) => Ok(()),
+                Ok(ref path) => {
+                    if !path.is_empty() {
+                        callback_context.event.set();
+                    }
+                }
+                Err(_) => {
+                    callback_context.event.set();
+                }
             };
         }
     }
