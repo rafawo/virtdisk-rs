@@ -498,7 +498,7 @@ impl Disk {
             }
 
             let mut partition_info: winioctl::PPARTITION_INFORMATION_EX = std::ptr::null_mut();
-            let drive_layout_ptr =
+            let mut drive_layout_ptr =
                 &mut (*drive_layout).PartitionEntry[0] as winioctl::PPARTITION_INFORMATION_EX;
 
             for _i in 0..(*drive_layout).PartitionCount {
@@ -508,7 +508,7 @@ impl Disk {
                 ) {
                     partition_info = drive_layout_ptr;
                 }
-                drive_layout_ptr.offset(1);
+                drive_layout_ptr = drive_layout_ptr.offset(1);
             }
 
             if partition_info == std::ptr::null_mut() {
