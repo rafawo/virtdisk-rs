@@ -307,7 +307,12 @@ impl Disk {
                 partitions: [winioctl::PARTITION_INFORMATION_EX; 1],
             }
 
-            let mut layout = std::mem::zeroed::<Layout>();
+            let mut layout_buffer: Vec<Byte> = Vec::new();
+            let layout_buffer_size = std::mem::size_of::<Layout>() +
+                std::mem::size_of::<winioctl::PARTITION_INFORMATION_EX>();
+            layout_buffer.reserve(layout_buffer_size);
+
+            let mut layout: &mut Layout = std::mem::transmute(layout_buffer.as_mut_ptr());
 
             if ioapiset::DeviceIoControl(
                 self.handle,
@@ -325,6 +330,8 @@ impl Disk {
                 ));
             }
 
+            assert!(layout_buffer_size >= bytes as usize);
+
             let mut partition_info = PartitionInfo {
                 volume_path: String::new(),
                 disk_id: layout.info.u.Gpt().DiskId,
@@ -332,34 +339,44 @@ impl Disk {
             };
 
             layout.info.PartitionCount = 2;
-            let mut part_info = &mut layout.info.PartitionEntry[0];
-            part_info.PartitionStyle = winioctl::PARTITION_STYLE_GPT;
-            *part_info.StartingOffset.QuadPart_mut() = 1024 * 1024; //MB
-            *part_info.PartitionLength.QuadPart_mut() = 128 * 1024 * 1024; // 128 MB
-            part_info.PartitionNumber = 0;
-            part_info.RewritePartition = 1;
-            part_info.u.Gpt_mut().PartitionType = PARTITION_MSFT_RESERVED_GUID;
-            let start: i64 =
-                part_info.StartingOffset.QuadPart() + part_info.PartitionLength.QuadPart();
 
-            let mut part_info = (part_info as *mut winioctl::PARTITION_INFORMATION_EX).offset(1);
-            (*part_info).PartitionStyle = winioctl::PARTITION_STYLE_GPT;
-            *(*part_info).StartingOffset.QuadPart_mut() = start;
-            *(*part_info).PartitionLength.QuadPart_mut() =
-                (layout.info.u.Gpt().StartingUsableOffset.QuadPart()
-                    + layout.info.u.Gpt().UsableLength.QuadPart())
-                    - start;
-            (*part_info).PartitionNumber = 1;
-            (*part_info).RewritePartition = 1;
-            (*part_info).u.Gpt_mut().PartitionType = PARTITION_BASIC_DATA_GUID;
-            (*part_info).u.Gpt_mut().PartitionId = partition_info.partition_id;
-            (*part_info).u.Gpt_mut().Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER;
+            let partition_entries = {
+                let mut partition_1 = std::mem::zeroed::<winioctl::PARTITION_INFORMATION_EX>();
+                partition_1.PartitionStyle = winioctl::PARTITION_STYLE_GPT;
+                *partition_1.StartingOffset.QuadPart_mut() = 1024 * 1024; //MB
+                *partition_1.PartitionLength.QuadPart_mut() = 128 * 1024 * 1024; // 128 MB
+                partition_1.PartitionNumber = 0;
+                partition_1.RewritePartition = 1;
+                partition_1.u.Gpt_mut().PartitionType = PARTITION_MSFT_RESERVED_GUID;
+                let start: i64 =
+                    partition_1.StartingOffset.QuadPart() +
+                        partition_1.PartitionLength.QuadPart();
+
+                let mut partition_2 = std::mem::zeroed::<winioctl::PARTITION_INFORMATION_EX>();
+                partition_2.PartitionStyle = winioctl::PARTITION_STYLE_GPT;
+                *partition_2.StartingOffset.QuadPart_mut() = start;
+                *partition_2.PartitionLength.QuadPart_mut() =
+                    (layout.info.u.Gpt().StartingUsableOffset.QuadPart()
+                        + layout.info.u.Gpt().UsableLength.QuadPart())
+                        - start;
+                partition_2.PartitionNumber = 1;
+                partition_2.RewritePartition = 1;
+                partition_2.u.Gpt_mut().PartitionType = PARTITION_BASIC_DATA_GUID;
+                partition_2.u.Gpt_mut().PartitionId = partition_info.partition_id;
+                partition_2.u.Gpt_mut().Attributes = GPT_BASIC_DATA_ATTRIBUTE_NO_DRIVE_LETTER;
+
+                (partition_1, partition_2)
+            };
+
+            layout.info.PartitionEntry[0] = partition_entries.0;
+            let part_info = (&mut layout.info.PartitionEntry[0] as *mut winioctl::PARTITION_INFORMATION_EX).offset(1);
+            *part_info = partition_entries.1;
 
             if ioapiset::DeviceIoControl(
                 self.handle,
                 winioctl::IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
-                &mut layout as *mut _ as PVoid,
-                std::mem::size_of::<Layout>() as DWord,
+                layout_buffer.as_mut_ptr() as *mut _ as PVoid,
+                layout_buffer_size as u32,
                 std::ptr::null_mut(),
                 0,
                 &mut bytes,
