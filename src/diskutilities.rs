@@ -465,6 +465,7 @@ impl Disk {
             let mut drive_layout: winioctl::PDRIVE_LAYOUT_INFORMATION_EX = std::ptr::null_mut();
             let mut buffer: Vec<Byte> = Vec::new();
 
+            #[repr(C)]
             struct ExpectedLayout {
                 info: winioctl::DRIVE_LAYOUT_INFORMATION_EX,
                 partitions: [winioctl::PARTITION_INFORMATION_EX; 1],
@@ -547,6 +548,7 @@ impl Disk {
             let mut new_partition_size: LongLong = *(*partition_info).PartitionLength.QuadPart();
 
             if current_partition_end < new_partition_end {
+                #[repr(C)]
                 struct DiskGrowPartition {
                     partition_number: DWord,
                     bytes_to_grow: winapi::shared::ntdef::LARGE_INTEGER,
