@@ -403,14 +403,15 @@ impl Disk {
                     | FMIFS_FORMAT_SHORT_NAMES_DISABLE
                     | FMIFS_FORMAT_FORCE;
 
+                let mut volume_path_wstr = widestring::WideString::from_str(&partition_info.volume_path).into_vec();
+                volume_path_wstr.push(0);
+                let mut file_system_wstr = widestring::WideString::from_str(file_system).into_vec();
+                file_system_wstr.push(0);
+
                 format_ex2(
-                    widestring::WideString::from_str(&partition_info.volume_path)
-                        .into_vec()
-                        .as_mut_ptr(),
+                    volume_path_wstr.as_mut_ptr(),
                     FmIfsMediaType::FmMediaFixed,
-                    widestring::WideString::from_str(file_system)
-                        .into_vec()
-                        .as_mut_ptr(),
+                    file_system_wstr.as_mut_ptr(),
                     &mut format_param,
                     format_ex2_callback,
                 );
