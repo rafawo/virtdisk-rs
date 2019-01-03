@@ -860,3 +860,164 @@ unsafe extern "system" fn volume_arrival_callback(
 
     winapi::shared::winerror::ERROR_SUCCESS
 }
+
+#[derive(Clone)]
+pub struct NtFileSystemInfo {
+    pub ntfs_volume_serial_number: u64,
+    pub ntfs_version: String,
+    pub lfs_version: String,
+    pub number_sectors: u64,
+    pub total_clusters: u64,
+    pub free_clusters: u64,
+    pub total_reserved: u64,
+    pub bytes_per_sector: u32,
+    pub bytes_per_physical_sector: u32,
+    pub bytes_per_cluster: u32,
+    pub bytes_per_file_record_segment: u32,
+    pub clusters_per_file_record_segment: u32,
+    pub mft_valid_data_length: u64,
+    pub mft_start_lcn: u64,
+    pub mft2_start_lcn: u64,
+    pub mft_zone_start: u64,
+    pub mft_zone_end: u64,
+    pub max_device_trim_extent_count: u32,
+    pub max_device_trim_byte_count: u32,
+    pub max_volume_trim_extent_count: u32,
+    pub max_volume_trim_byte_count: u32,
+    pub resource_manager_identifier: Guid,
+}
+
+pub fn get_ntfsinfo(volume_path: &str) -> Result<NtFileSystemInfo, ResultCode> {
+    let command = format!("fsutil fsinfo ntfsinfo {}", volume_path);
+    let output = std::process::Command::new("cmd")
+        .args(&["/C", &command])
+        .output();
+
+    if output.is_err() {
+        return Err(ResultCode::ErrorGenFailure);
+    }
+
+    let output = output.unwrap();
+    let output_string = String::from_utf8_lossy(&output.stdout);
+
+    let mut ntfsinfo = NtFileSystemInfo {
+        ntfs_volume_serial_number: 0,
+        ntfs_version: String::new(),
+        lfs_version: String::new(),
+        number_sectors: 0,
+        total_clusters: 0,
+        free_clusters: 0,
+        total_reserved: 0,
+        bytes_per_sector: 0,
+        bytes_per_physical_sector: 0,
+        bytes_per_cluster: 0,
+        bytes_per_file_record_segment: 0,
+        clusters_per_file_record_segment: 0,
+        mft_valid_data_length: 0,
+        mft_start_lcn: 0,
+        mft2_start_lcn: 0,
+        mft_zone_start: 0,
+        mft_zone_end: 0,
+        max_device_trim_extent_count: 0,
+        max_device_trim_byte_count: 0,
+        max_volume_trim_extent_count: 0,
+        max_volume_trim_byte_count: 0,
+        resource_manager_identifier: GUID_NULL,
+    };
+
+    for line in output_string.lines() {
+        let splitted: Vec<_> = line.split(":").collect();
+        if splitted.len() == 2 {
+            match splitted[0].trim() {
+                "NTFS Volume Serial Number" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.ntfs_volume_serial_number =
+                        u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "NTFS Version" => {
+                    ntfsinfo.ntfs_version = String::from(splitted[1].trim());
+                }
+                "LFS Version" => {
+                    ntfsinfo.lfs_version = String::from(splitted[1].trim());
+                }
+                "Number Sectors" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.number_sectors = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Total Clusters" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.total_clusters = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Free Clusters" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.free_clusters = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Total Reserved" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.total_reserved = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Bytes Per Sector" => {
+                    ntfsinfo.bytes_per_sector = splitted[1].trim().parse::<u32>().unwrap();
+                }
+                "Bytes Per Physical Sector" => {
+                    ntfsinfo.bytes_per_physical_sector = splitted[1].trim().parse::<u32>().unwrap();
+                }
+                "Bytes Per Cluster" => {
+                    ntfsinfo.bytes_per_cluster = splitted[1].trim().parse::<u32>().unwrap();
+                }
+                "Bytes Per FileRecord Segment" => {
+                    ntfsinfo.bytes_per_file_record_segment =
+                        splitted[1].trim().parse::<u32>().unwrap();
+                }
+                "Clusters Per FileRecord Segment" => {
+                    ntfsinfo.clusters_per_file_record_segment =
+                        splitted[1].trim().parse::<u32>().unwrap();
+                }
+                "Mft Valid Data Length" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.mft_valid_data_length = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Mft Start Lcn" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.mft_start_lcn = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Mft2 Start Lcn" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.mft2_start_lcn = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Mft Zone Start" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.mft_zone_start = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Mft Zone End" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.mft_zone_end = u64::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Max Device Trim Extent Count" => {
+                    ntfsinfo.max_device_trim_extent_count =
+                        splitted[1].trim().parse::<u32>().unwrap();
+                }
+                "Max Device Trim Byte Count" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.max_device_trim_byte_count =
+                        u32::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Max Volume Trim Extent Count" => {
+                    ntfsinfo.max_volume_trim_extent_count =
+                        splitted[1].trim().parse::<u32>().unwrap();
+                }
+                "Max Volume Trim Byte Count" => {
+                    let hex_value = splitted[1].trim().trim_left_matches("0x");
+                    ntfsinfo.max_volume_trim_byte_count =
+                        u32::from_str_radix(hex_value, 16).unwrap();
+                }
+                "Resource Manager Identifier" => {
+                    ntfsinfo.resource_manager_identifier = parse_guid(splitted[1].trim()).unwrap();
+                }
+                _ => {}
+            };
+        }
+    }
+
+    Ok(ntfsinfo)
+}

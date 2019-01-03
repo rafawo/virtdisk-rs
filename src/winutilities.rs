@@ -517,12 +517,33 @@ pub extern "C" fn format_ex2_callback(
 #[link(name = "RpcRT4")]
 extern "C" {
     pub fn UuidCreate(guid: *mut Guid) -> winapi::shared::rpc::RPC_STATUS;
+
+    pub fn UuidFromStringW(
+        guid_string: winapi::shared::rpcdce::RPC_WSTR,
+        guid: *mut Guid,
+    ) -> winapi::shared::rpc::RPC_STATUS;
 }
 
 pub fn create_guid() -> Result<Guid, ResultCode> {
     let mut guid: Guid = GUID_NULL;
     unsafe {
         match UuidCreate(&mut guid) {
+            0 => Ok(guid),
+            error_code => Err(error_code_to_result_code(error_code as u32)),
+        }
+    }
+}
+
+pub fn parse_guid(guid_string: &str) -> Result<Guid, ResultCode> {
+    let mut guid: Guid = GUID_NULL;
+    unsafe {
+        match UuidFromStringW(
+            widestring::WideCString::from_str(guid_string)
+                .unwrap()
+                .into_vec_with_nul()
+                .as_mut_ptr(),
+            &mut guid,
+        ) {
             0 => Ok(guid),
             error_code => Err(error_code_to_result_code(error_code as u32)),
         }
