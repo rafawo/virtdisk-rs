@@ -544,7 +544,7 @@ impl Disk {
                     + (*drive_layout).u.Gpt().UsableLength.QuadPart();
 
             assert!(current_partition_end <= new_partition_end);
-            //let mut new_partition_size: LongLong = *(*partition_info).PartitionLength.QuadPart();
+            let mut new_partition_size: LongLong = *(*partition_info).PartitionLength.QuadPart();
 
             if current_partition_end < new_partition_end {
                 #[repr(C)]
@@ -558,7 +558,7 @@ impl Disk {
                 *grow_partition.bytes_to_grow.QuadPart_mut() =
                     new_partition_end - current_partition_end;
 
-                //new_partition_size += *grow_partition.bytes_to_grow.QuadPart();
+                new_partition_size += *grow_partition.bytes_to_grow.QuadPart();
 
                 if ioapiset::DeviceIoControl(
                     self.handle,
@@ -577,16 +577,41 @@ impl Disk {
                 }
             }
 
-            // TODO:rafawo Use fsutil.exe in the system to do the below steps
-
             // Query the current file system size.
+            let volume_path = volume_path_disk(self.handle)?;
+            let ntfsinfo = get_ntfsinfo(&volume_path).unwrap();
 
             // Compute the new number of clusters (rounding down) and extend the file system.
+            let new_number_of_clusters =
+                new_partition_size / ntfsinfo.bytes_per_cluster as LongLong;
+            let old_number_of_clusters = ntfsinfo.total_clusters - ntfsinfo.free_clusters;
 
             // NTFS may extend the volume by one sector less than requested (NtfsChangeVolumeSize),
             // so increase the current size by one to check if there's any space left.
+            if old_number_of_clusters + 1 < new_number_of_clusters as u64 {
+                let sectors_in_cluster = ntfsinfo.bytes_per_cluster / ntfsinfo.bytes_per_sector;
+                let mut new_number_of_sectors =
+                    new_number_of_clusters * sectors_in_cluster as LongLong;
+                let volume = Volume::open(&volume_path, None)?;
 
-            result = true;
+                if ioapiset::DeviceIoControl(
+                    volume.handle,
+                    winioctl::FSCTL_EXTEND_VOLUME,
+                    &mut new_number_of_sectors as *mut _ as PVoid,
+                    std::mem::size_of::<LongLong>() as DWord,
+                    std::ptr::null_mut(),
+                    0,
+                    &mut bytes_returned,
+                    std::ptr::null_mut(),
+                ) == 0
+                {
+                    return Err(error_code_to_result_code(
+                        winapi::um::errhandlingapi::GetLastError(),
+                    ));
+                }
+
+                result = true;
+            }
 
             Ok(result)
         }
