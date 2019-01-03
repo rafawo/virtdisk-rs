@@ -454,12 +454,11 @@ impl Disk {
     /// Expands the last basic partition and its file system to occupy any available space left on disk.
     /// Returns true if the file system was expanded, false if there is no more space left for further expansion.
     pub fn expand_volume(&self) -> Result<bool, ResultCode> {
-        use winapi::um::{errhandlingapi, ioapiset, winioctl};
-
-        let mut result: bool = false;
-
         #[allow(unused_assignments, dead_code)]
         unsafe {
+            use winapi::um::{errhandlingapi, ioapiset, winioctl};
+            let mut result: bool = false;
+
             // Query the current partition layout
             let mut bytes_returned: DWord = 0;
             let mut drive_layout: winioctl::PDRIVE_LAYOUT_INFORMATION_EX = std::ptr::null_mut();
@@ -545,7 +544,7 @@ impl Disk {
                     + (*drive_layout).u.Gpt().UsableLength.QuadPart();
 
             assert!(current_partition_end <= new_partition_end);
-            let mut new_partition_size: LongLong = *(*partition_info).PartitionLength.QuadPart();
+            //let mut new_partition_size: LongLong = *(*partition_info).PartitionLength.QuadPart();
 
             if current_partition_end < new_partition_end {
                 #[repr(C)]
@@ -559,7 +558,7 @@ impl Disk {
                 *grow_partition.bytes_to_grow.QuadPart_mut() =
                     new_partition_end - current_partition_end;
 
-                new_partition_size += *grow_partition.bytes_to_grow.QuadPart();
+                //new_partition_size += *grow_partition.bytes_to_grow.QuadPart();
 
                 if ioapiset::DeviceIoControl(
                     self.handle,
@@ -578,59 +577,19 @@ impl Disk {
                 }
             }
 
-            let volume_path = volume_path_disk(self.handle)?;
-            let volume = Volume::open(&volume_path, None)?;
+            // TODO:rafawo Use fsutil.exe in the system to do the below steps
 
-            let mut volume_size_info = std::mem::zeroed::<FileFsFullSizeInformation>();
-            let mut status_block = std::mem::zeroed::<IoStatusBlock>();
-
-            let ntstatus = NtQueryVolumeInformationFile(
-                volume.handle,
-                &mut status_block,
-                &mut volume_size_info as *mut _ as PVoid,
-                std::mem::size_of::<FileFsFullSizeInformation>() as DWord,
-                FsInfoClass::FileFsFullSizeInformation,
-            );
-
-            if !winapi::shared::ntdef::NT_SUCCESS(ntstatus) {
-                return Err(error_code_to_result_code(ntstatus as u32));
-            }
+            // Query the current file system size.
 
             // Compute the new number of clusters (rounding down) and extend the file system.
-            let cluster_size: LongLong = (volume_size_info.BytesPerSector
-                * volume_size_info.SectorsPerAllocationUnit)
-                as i64;
-            let new_number_of_allocation_units: LongLong = new_partition_size / cluster_size;
 
             // NTFS may extend the volume by one sector less than requested (NtfsChangeVolumeSize),
             // so increase the current size by one to check if there's any space left.
-            if *volume_size_info.TotalAllocationUnits.QuadPart() + 1
-                < new_number_of_allocation_units
-            {
-                let mut new_number_of_sectors: LongLong = new_number_of_allocation_units
-                    * volume_size_info.SectorsPerAllocationUnit as i64;
 
-                if ioapiset::DeviceIoControl(
-                    volume.handle,
-                    winioctl::FSCTL_EXTEND_VOLUME,
-                    &mut new_number_of_sectors as *mut _ as PVoid,
-                    std::mem::size_of::<LongLong>() as DWord,
-                    std::ptr::null_mut(),
-                    0,
-                    &mut bytes_returned,
-                    std::ptr::null_mut(),
-                ) == 0
-                {
-                    return Err(error_code_to_result_code(
-                        winapi::um::errhandlingapi::GetLastError(),
-                    ));
-                }
+            result = true;
 
-                result = true;
-            }
+            Ok(result)
         }
-
-        Ok(result)
     }
 }
 

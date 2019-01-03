@@ -40,11 +40,4 @@ fn main() {
     );
 
     println!("cargo:rustc-link-search={}", um_lib_root_path);
-
-    let km_lib_root_path = format!(
-        "{}\\Lib\\{}\\km\\x64",
-        root_win10_sdk_path, win10_sdk_version
-    );
-
-    println!("cargo:rustc-link-search={}", km_lib_root_path);
 }

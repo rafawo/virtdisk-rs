@@ -529,64 +529,6 @@ pub fn create_guid() -> Result<Guid, ResultCode> {
     }
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-#[allow(non_snake_case)]
-pub union IoStatusBlockDetails {
-    pub Status: winapi::shared::ntdef::NTSTATUS,
-    pub Pointer: PVoid,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-#[allow(non_snake_case)]
-pub struct IoStatusBlock {
-    pub u: IoStatusBlockDetails,
-    pub Information: ULongPtr,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-#[allow(non_snake_case)]
-pub struct FileFsFullSizeInformation {
-    pub TotalAllocationUnits: LargeInteger,
-    pub CallerAvailableAllocationUnits: LargeInteger,
-    pub ActualAvailableAllocationUnits: LargeInteger,
-    pub SectorsPerAllocationUnit: ULong,
-    pub BytesPerSector: ULong,
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum FsInfoClass {
-    FileFsVolumeInformation = 1,
-    FileFsLabelInformation,        // 2
-    FileFsSizeInformation,         // 3
-    FileFsDeviceInformation,       // 4
-    FileFsAttributeInformation,    // 5
-    FileFsControlInformation,      // 6
-    FileFsFullSizeInformation,     // 7
-    FileFsObjectIdInformation,     // 8
-    FileFsDriverPathInformation,   // 9
-    FileFsVolumeFlagsInformation,  // 10
-    FileFsSectorSizeInformation,   // 11
-    FileFsDataCopyInformation,     // 12
-    FileFsMetadataSizeInformation, // 13
-    FileFsFullSizeInformationEx,   // 14
-    FileFsMaximumInformation,
-}
-
-#[link(name = "NtosKrnl")]
-extern "C" {
-    pub fn NtQueryVolumeInformationFile(
-        FileHandle: Handle,
-        IoStatusBlock: *mut IoStatusBlock,
-        FsInformation: PVoid,
-        Length: ULong,
-        FsInformationClass: FsInfoClass,
-    ) -> winapi::shared::ntdef::NTSTATUS;
-}
-
 fn enable_privilege(
     token_handle: Handle,
     id: &winapi::um::winnt::LUID,
