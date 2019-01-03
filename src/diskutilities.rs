@@ -307,19 +307,17 @@ impl Disk {
                 partitions: [winioctl::PARTITION_INFORMATION_EX; 1],
             }
 
-            let mut layout_buffer: Vec<Byte> = Vec::new();
-            let layout_buffer_size = std::mem::size_of::<Layout>() +
-                std::mem::size_of::<winioctl::PARTITION_INFORMATION_EX>();
-            layout_buffer.reserve(layout_buffer_size);
-
-            let mut layout: &mut Layout = std::mem::transmute(layout_buffer.as_mut_ptr());
+            const LAYOUT_BUFFER_SIZE: usize = std::mem::size_of::<Layout>()
+                + std::mem::size_of::<winioctl::PARTITION_INFORMATION_EX>();
+            let mut layout_buffer: [Byte; LAYOUT_BUFFER_SIZE] = [0; LAYOUT_BUFFER_SIZE];
+            let layout: &mut Layout = std::mem::transmute(layout_buffer.as_mut_ptr());
 
             if ioapiset::DeviceIoControl(
                 self.handle,
                 winioctl::IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
                 std::ptr::null_mut(),
                 0,
-                &mut layout as *mut _ as PVoid,
+                layout_buffer.as_mut_ptr() as PVoid,
                 std::mem::size_of::<Layout>() as DWord,
                 &mut bytes,
                 std::ptr::null_mut(),
@@ -330,15 +328,16 @@ impl Disk {
                 ));
             }
 
-            assert!(layout_buffer_size >= bytes as usize);
+            assert!(LAYOUT_BUFFER_SIZE >= bytes as usize);
 
+            let mut layout_mut_ref: &mut Layout = std::mem::transmute(layout_buffer.as_mut_ptr());
             let mut partition_info = PartitionInfo {
                 volume_path: String::new(),
-                disk_id: layout.info.u.Gpt().DiskId,
+                disk_id: layout_mut_ref.info.u.Gpt().DiskId,
                 partition_id: create_guid()?,
             };
 
-            layout.info.PartitionCount = 2;
+            layout_mut_ref.info.PartitionCount = 2;
 
             let partition_entries = {
                 let mut partition_1 = std::mem::zeroed::<winioctl::PARTITION_INFORMATION_EX>();
@@ -349,8 +348,7 @@ impl Disk {
                 partition_1.RewritePartition = 1;
                 partition_1.u.Gpt_mut().PartitionType = PARTITION_MSFT_RESERVED_GUID;
                 let start: i64 =
-                    partition_1.StartingOffset.QuadPart() +
-                        partition_1.PartitionLength.QuadPart();
+                    partition_1.StartingOffset.QuadPart() + partition_1.PartitionLength.QuadPart();
 
                 let mut partition_2 = std::mem::zeroed::<winioctl::PARTITION_INFORMATION_EX>();
                 partition_2.PartitionStyle = winioctl::PARTITION_STYLE_GPT;
@@ -368,15 +366,17 @@ impl Disk {
                 (partition_1, partition_2)
             };
 
-            layout.info.PartitionEntry[0] = partition_entries.0;
-            let part_info = (&mut layout.info.PartitionEntry[0] as *mut winioctl::PARTITION_INFORMATION_EX).offset(1);
+            layout_mut_ref.info.PartitionEntry[0] = partition_entries.0;
+            let part_info = (&mut layout_mut_ref.info.PartitionEntry[0]
+                as *mut winioctl::PARTITION_INFORMATION_EX)
+                .offset(1);
             *part_info = partition_entries.1;
 
             if ioapiset::DeviceIoControl(
                 self.handle,
                 winioctl::IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
                 layout_buffer.as_mut_ptr() as *mut _ as PVoid,
-                layout_buffer_size as u32,
+                LAYOUT_BUFFER_SIZE as u32,
                 std::ptr::null_mut(),
                 0,
                 &mut bytes,
@@ -420,7 +420,8 @@ impl Disk {
                     | FMIFS_FORMAT_SHORT_NAMES_DISABLE
                     | FMIFS_FORMAT_FORCE;
 
-                let mut volume_path_wstr = widestring::WideString::from_str(&partition_info.volume_path).into_vec();
+                let mut volume_path_wstr =
+                    widestring::WideString::from_str(&partition_info.volume_path).into_vec();
                 volume_path_wstr.push(0);
                 let mut file_system_wstr = widestring::WideString::from_str(file_system).into_vec();
                 file_system_wstr.push(0);
