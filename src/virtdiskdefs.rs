@@ -197,6 +197,7 @@ pub mod create_virtual_disk {
         pub maximum_size: u64,
         pub block_size_in_bytes: u32,
         pub sector_size_in_bytes: u32,
+        pub physical_sector_size_in_bytes: u32,
         pub parent_path: PCWStr,
         pub source_path: PCWStr,
         pub open_flags: u32, // OpenVirtualDiskFlag
@@ -212,6 +213,7 @@ pub mod create_virtual_disk {
         pub maximum_size: u64,
         pub block_size_in_bytes: u32,
         pub sector_size_in_bytes: u32,
+        pub physical_sector_size_in_bytes: u32,
         pub parent_path: PCWStr,
         pub source_path: PCWStr,
         pub open_flags: u32, // OpenVirtualDiskFlag
@@ -229,6 +231,7 @@ pub mod create_virtual_disk {
         pub maximum_size: u64,
         pub block_size_in_bytes: u32,
         pub sector_size_in_bytes: u32,
+        pub physical_sector_size_in_bytes: u32,
         pub parent_path: PCWStr,
         pub source_path: PCWStr,
         pub open_flags: u32, // OpenVirtualDiskFlag
