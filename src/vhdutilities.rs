@@ -9,11 +9,11 @@
 //! Wrappers around basic VHD functions used to setup container storage.
 
 use crate::diskutilities::*;
-use crate::errorcodes::{error_code_to_result_code, result_code_to_error_code, ResultCode};
 use crate::virtdisk::*;
 use crate::virtdiskdefs::*;
-use crate::windefs::*;
-use crate::winutilities::*;
+use winutils_rs::errorcodes::{error_code_to_result_code, result_code_to_error_code, ResultCode};
+use winutils_rs::utilities::*;
+use winutils_rs::windefs::*;
 
 pub struct MountedVolume {
     pub vhd: VirtualDisk,

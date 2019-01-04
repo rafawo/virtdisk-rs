@@ -8,9 +8,10 @@
 
 //! Wrappers around basic disk functions used to setup container storage.
 
-use crate::errorcodes::{error_code_to_result_code, ResultCode};
-use crate::windefs::*;
-use crate::winutilities::*;
+use winutils_rs::diskformat::*;
+use winutils_rs::errorcodes::{error_code_to_result_code, ResultCode};
+use winutils_rs::utilities::*;
+use winutils_rs::windefs::*;
 
 #[allow(dead_code)]
 pub struct PartitionInfo {

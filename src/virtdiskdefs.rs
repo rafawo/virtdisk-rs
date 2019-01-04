@@ -8,7 +8,7 @@
 
 //! This module contains the type definitions used by the VirtDisk APIs.
 
-use crate::windefs::*;
+use winutils_rs::windefs::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -786,7 +786,7 @@ pub mod resize_virtual_disk {
 }
 
 pub mod mirror_virtual_disk {
-    use crate::windefs::*;
+    use winutils_rs::windefs::*;
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -840,7 +840,7 @@ pub mod query_changes_virtual_disk {
 }
 
 pub mod take_snapshot_vhdset {
-    use crate::windefs::*;
+    use winutils_rs::windefs::*;
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -877,7 +877,7 @@ pub mod take_snapshot_vhdset {
 }
 
 pub mod delete_snapshot_vhdset {
-    use crate::windefs::*;
+    use winutils_rs::windefs::*;
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -914,7 +914,7 @@ pub mod delete_snapshot_vhdset {
 }
 
 pub mod modify_vhdset {
-    use crate::windefs::*;
+    use winutils_rs::windefs::*;
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -956,7 +956,7 @@ pub mod modify_vhdset {
 }
 
 pub mod apply_snapshot_vhdset {
-    use crate::windefs::*;
+    use winutils_rs::windefs::*;
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -994,7 +994,7 @@ pub mod apply_snapshot_vhdset {
 }
 
 pub mod raw_scsi_virtual_disk {
-    use crate::windefs::*;
+    use winutils_rs::windefs::*;
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1059,7 +1059,7 @@ pub mod raw_scsi_virtual_disk {
 }
 
 pub mod fork_virtual_disk {
-    use crate::windefs::*;
+    use winutils_rs::windefs::*;
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

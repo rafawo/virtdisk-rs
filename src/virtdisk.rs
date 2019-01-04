@@ -8,11 +8,11 @@
 
 //! This module provides Rust idiomatic abstractions to the C bindings of VirtDisk.
 
-use crate::errorcodes::{error_code_to_result_code, ResultCode};
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
-use crate::windefs::*;
 use widestring::{WideCString, WideStr, WideString};
+use winutils_rs::errorcodes::{error_code_to_result_code, ResultCode};
+use winutils_rs::windefs::*;
 
 /// Wrapper of a get_virtual_disk::Info struct that can be of a variable heap allocated length.
 pub struct GetVirtualDiskInfoWrapper {
@@ -60,7 +60,7 @@ pub struct VirtualDisk {
 
 impl std::ops::Drop for VirtualDisk {
     fn drop(&mut self) {
-        crate::winutilities::close_handle(&mut self.handle);
+        winutils_rs::utilities::close_handle(&mut self.handle);
     }
 }
 

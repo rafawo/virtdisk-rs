@@ -9,7 +9,7 @@
 //! This module contains the C bindings to the VirtDisk APIs.
 
 use crate::virtdiskdefs::*;
-use crate::windefs::*;
+use winutils_rs::windefs::*;
 
 #[link(name = "virtdisk")]
 extern "C" {
