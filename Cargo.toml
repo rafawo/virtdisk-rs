@@ -25,4 +25,4 @@ winapi = { version = "0.3.6", features = [
     "winerror",
     "winioctl",
 ] }
-winutils-rs = "0.1.0"
+winutils-rs = "0.1.2"
