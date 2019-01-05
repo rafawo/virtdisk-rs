@@ -17,7 +17,7 @@ struct DeleteDiskScopeExit<'a> {
 impl<'a> std::ops::Drop for DeleteDiskScopeExit<'a> {
     fn drop(&mut self) {
         if let Err(error) = std::fs::remove_file(self.filepath) {
-            panic!("Failed to delete file {}: {}", self.filepath, error);
+            println!("Failed to delete file {}: {}", self.filepath, error);
         };
     }
 }

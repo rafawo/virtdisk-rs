@@ -21,6 +21,36 @@ pub struct MountedVolume {
     pub partition: PartitionInfo,
 }
 
+/// Creates a new VHD specified by filename.
+pub fn create_vhd(
+    filename: &str,
+    disk_size_gb: u64,
+    block_size_mb: u32,
+) -> Result<VirtualDisk, ResultCode> {
+    let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
+    parameters.version = create_virtual_disk::Version::Version2;
+    unsafe {
+        parameters.version_details.version2.maximum_size = disk_size_gb * 1024 * 1024 * 1024;
+        parameters.version_details.version2.block_size_in_bytes = block_size_mb * 1024 * 1024;
+    }
+
+    let default_storage_type = VirtualStorageType {
+        device_id: 0,
+        vendor_id: GUID_NULL,
+    };
+
+    VirtualDisk::create(
+        default_storage_type,
+        filename,
+        VirtualDiskAccessMask::None,
+        None,
+        create_virtual_disk::Flag::None as u32,
+        0,
+        &parameters,
+        None,
+    )
+}
+
 /// Mounts the given VHD into the host.
 /// The flags are a u32 representation of any valid combination from `attach_virtual_disk::Flag` values.
 pub fn mount_vhd(
@@ -143,34 +173,10 @@ pub fn create_base_vhd(
     block_size_mb: u32,
     file_system: &str,
 ) -> Result<MountedVolume, ResultCode> {
-    let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
-    parameters.version = create_virtual_disk::Version::Version2;
-    unsafe {
-        parameters.version_details.version2.maximum_size = disk_size_gb * 1024 * 1024 * 1024;
-        parameters.version_details.version2.block_size_in_bytes = block_size_mb * 1024 * 1024;
-    }
-
-    let default_storage_type = VirtualStorageType {
-        device_id: 0,
-        vendor_id: GUID_NULL,
-    };
-
-    let virtual_disk = VirtualDisk::create(
-        default_storage_type,
-        filename,
-        VirtualDiskAccessMask::None,
-        None,
-        create_virtual_disk::Flag::None as u32,
-        0,
-        &parameters,
-        None,
-    )?;
-
+    let virtual_disk = create_vhd(filename, disk_size_gb, block_size_mb)?;
     mount_vhd_temporarily_for_setup(&virtual_disk)?;
-
     let disk = open_vhd_backed_disk(&virtual_disk)?;
     let partition_info = disk.format(file_system)?;
-
     Ok(MountedVolume {
         vhd: virtual_disk,
         disk: disk,
