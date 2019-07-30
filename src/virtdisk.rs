@@ -11,7 +11,7 @@
 use crate::virtdisk_bindings::*;
 use crate::virtdiskdefs::*;
 use widestring::{WideCString, WideStr, WideString};
-use winutils_rs::errorcodes::{error_code_to_result_code, ResultCode};
+use winutils_rs::errorcodes::{error_code_to_winresult_code, WinResult, WinResultCode};
 use winutils_rs::windefs::*;
 
 /// Wrapper of a get_virtual_disk::Info struct that can be of a variable heap allocated length.
@@ -67,9 +67,9 @@ impl std::ops::Drop for VirtualDisk {
 impl VirtualDisk {
     /// Wraps the supplied virtual hard disk handle, providing a safe drop implementation that will close the handle
     /// on the end of its lifetime.
-    pub fn wrap_handle(handle: Handle) -> Result<VirtualDisk, ResultCode> {
+    pub fn wrap_handle(handle: Handle) -> WinResult<VirtualDisk> {
         match handle {
-            handle if handle == std::ptr::null_mut() => Err(ResultCode::ErrorInvalidArgument),
+            handle if handle == std::ptr::null_mut() => Err(WinResultCode::ErrorInvalidArgument),
             handle => Ok(VirtualDisk { handle }),
         }
     }
@@ -104,7 +104,7 @@ impl VirtualDisk {
         virtual_disk_access_mask: VirtualDiskAccessMask,
         flags: u32,
         parameters: Option<&open_virtual_disk::Parameters>,
-    ) -> Result<VirtualDisk, ResultCode> {
+    ) -> WinResult<VirtualDisk> {
         let mut handle: Handle = std::ptr::null_mut();
 
         let parameters_ptr = match parameters {
@@ -122,7 +122,7 @@ impl VirtualDisk {
                 &mut handle,
             ) {
                 0 => Ok(VirtualDisk { handle }),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -141,7 +141,7 @@ impl VirtualDisk {
         provider_specific_flags: u32,
         parameters: &create_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
-    ) -> Result<VirtualDisk, ResultCode> {
+    ) -> WinResult<VirtualDisk> {
         let mut handle: Handle = std::ptr::null_mut();
 
         let security_descriptor_ptr = match security_descriptor {
@@ -167,7 +167,7 @@ impl VirtualDisk {
                 &mut handle,
             ) {
                 0 => Ok(VirtualDisk { handle }),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -182,7 +182,7 @@ impl VirtualDisk {
         provider_specific_flags: u32,
         parameters: &attach_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         let security_descriptor_ptr = match security_descriptor {
             Some(security_descriptor) => &security_descriptor,
             None => std::ptr::null(),
@@ -203,7 +203,7 @@ impl VirtualDisk {
                 overlapped_ptr,
             ) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -211,17 +211,17 @@ impl VirtualDisk {
     /// Detaches a virtual hard disk (VHD) or CD or DVD image file (ISO)
     /// by locating an appropriate virtual disk provider to accomplish the operation.
     /// The flags are a u32 representation of any valid combination from `detach_virtual_disk::Flag` values.
-    pub fn detach(&self, flags: u32, provider_specific_flags: u32) -> Result<(), ResultCode> {
+    pub fn detach(&self, flags: u32, provider_specific_flags: u32) -> WinResult<()> {
         unsafe {
             match DetachVirtualDisk(self.handle, flags, provider_specific_flags) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
 
     /// Retrieves the path to the physical device object that contains a virtual hard disk (VHD) or CD or DVD image file (ISO).
-    pub fn get_physical_path(&self) -> Result<String, ResultCode> {
+    pub fn get_physical_path(&self) -> WinResult<String> {
         const PATH_SIZE: u32 = 256; // MAX_PATH
         let mut disk_path_wstr: [WChar; PATH_SIZE as usize] = [0; PATH_SIZE as usize];
 
@@ -238,13 +238,13 @@ impl VirtualDisk {
                     string.shrink_to_fit();
                     Ok(string)
                 }
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
 
     /// Retrieves the physical paths to all attached virtual disks and returns it in a vector of strings.
-    pub fn get_all_attached_physical_paths() -> Result<Vec<String>, ResultCode> {
+    pub fn get_all_attached_physical_paths() -> WinResult<Vec<String>> {
         let mut paths_buffer: Vec<WChar> = Vec::new();
         let mut buffer_size_bytes: u32 = 0;
 
@@ -257,8 +257,8 @@ impl VirtualDisk {
                 paths_buffer.as_mut_ptr(),
             );
 
-            match error_code_to_result_code(result) {
-                ResultCode::ErrorInsufficientBuffer => {
+            match error_code_to_winresult_code(result) {
+                WinResultCode::ErrorInsufficientBuffer => {
                     let buffer_size = buffer_size_bytes as usize / std::mem::size_of::<WChar>();
                     paths_buffer.resize(buffer_size, 0);
 
@@ -282,10 +282,10 @@ impl VirtualDisk {
 
                             Ok(paths)
                         }
-                        result => Err(error_code_to_result_code(result)),
+                        result => Err(error_code_to_winresult_code(result)),
                     }
                 }
-                ResultCode::ErrorSuccess => Ok(paths),
+                WinResultCode::ErrorSuccess => Ok(paths),
                 error => Err(error),
             }
         }
@@ -298,7 +298,7 @@ impl VirtualDisk {
         &self,
         flags: u32,
         version: storage_dependency::InfoVersion,
-    ) -> Result<GetStorageDependencyInformationWrapper, ResultCode> {
+    ) -> WinResult<GetStorageDependencyInformationWrapper> {
         let mut raw_buffer: Vec<Byte> = Vec::new();
         let size: u32 = std::mem::size_of::<storage_dependency::Info>() as u32;
         let mut buffer_size: u32 = size;
@@ -317,8 +317,8 @@ impl VirtualDisk {
                 &mut buffer_size,
             );
 
-            match error_code_to_result_code(result) {
-                ResultCode::ErrorInsufficientBuffer => {
+            match error_code_to_winresult_code(result) {
+                WinResultCode::ErrorInsufficientBuffer => {
                     raw_buffer.reserve(buffer_size as usize);
 
                     let result = GetStorageDependencyInformation(
@@ -329,14 +329,14 @@ impl VirtualDisk {
                         &mut buffer_size,
                     );
 
-                    match error_code_to_result_code(result) {
-                        ResultCode::ErrorSuccess => {
+                    match error_code_to_winresult_code(result) {
+                        WinResultCode::ErrorSuccess => {
                             Ok(GetStorageDependencyInformationWrapper { raw_buffer })
                         }
                         error => Err(error),
                     }
                 }
-                ResultCode::ErrorSuccess => {
+                WinResultCode::ErrorSuccess => {
                     Ok(GetStorageDependencyInformationWrapper { raw_buffer })
                 }
                 error => Err(error),
@@ -348,7 +348,7 @@ impl VirtualDisk {
     pub fn get_information(
         &self,
         version: get_virtual_disk::InfoVersion,
-    ) -> Result<GetVirtualDiskInfoWrapper, ResultCode> {
+    ) -> WinResult<GetVirtualDiskInfoWrapper> {
         let mut size_used: u32 = 0;
         let mut raw_buffer: Vec<Byte> = Vec::new();
         let mut size: u32 = std::mem::size_of::<get_virtual_disk::Info>() as u32;
@@ -362,30 +362,30 @@ impl VirtualDisk {
             let result =
                 GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
 
-            match error_code_to_result_code(result) {
-                ResultCode::ErrorInsufficientBuffer => {
+            match error_code_to_winresult_code(result) {
+                WinResultCode::ErrorInsufficientBuffer => {
                     raw_buffer.reserve(size as usize);
 
                     let result =
                         GetVirtualDiskInformation(self.handle, &mut size, info_ptr, &mut size_used);
 
-                    match error_code_to_result_code(result) {
-                        ResultCode::ErrorSuccess => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                    match error_code_to_winresult_code(result) {
+                        WinResultCode::ErrorSuccess => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
                         error => Err(error),
                     }
                 }
-                ResultCode::ErrorSuccess => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
+                WinResultCode::ErrorSuccess => Ok(GetVirtualDiskInfoWrapper { raw_buffer }),
                 error => Err(error),
             }
         }
     }
 
     /// Sets information about a virtual hard disk.
-    pub fn set_information(&self, info: &set_virtual_disk::Info) -> Result<(), ResultCode> {
+    pub fn set_information(&self, info: &set_virtual_disk::Info) -> WinResult<()> {
         unsafe {
             match SetVirtualDiskInformation(self.handle, info) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -393,7 +393,7 @@ impl VirtualDisk {
     /// Enumerates the metadata associated with a virtual disk.
     /// The returned vector of GUID refer to a set of metadata that can be retrieved
     /// using function `VirtualHardDisk::get_metadata`.
-    pub fn enumerate_metadata(&self) -> Result<Vec<Guid>, ResultCode> {
+    pub fn enumerate_metadata(&self) -> WinResult<Vec<Guid>> {
         let mut guids: Vec<Guid> = Vec::new();
         let mut vector_size: u32 = 0;
 
@@ -401,8 +401,8 @@ impl VirtualDisk {
             let result =
                 EnumerateVirtualDiskMetadata(self.handle, &mut vector_size, guids.as_mut_ptr());
 
-            match error_code_to_result_code(result) {
-                ResultCode::ErrorInsufficientBuffer => {
+            match error_code_to_winresult_code(result) {
+                WinResultCode::ErrorInsufficientBuffer => {
                     guids.resize(
                         vector_size as usize,
                         Guid {
@@ -422,17 +422,17 @@ impl VirtualDisk {
                             assert_eq!(vector_size as usize, guids.len());
                             Ok(guids)
                         }
-                        result => Err(error_code_to_result_code(result)),
+                        result => Err(error_code_to_winresult_code(result)),
                     }
                 }
-                ResultCode::ErrorSuccess => Ok(guids),
+                WinResultCode::ErrorSuccess => Ok(guids),
                 error => Err(error),
             }
         }
     }
 
     /// Retrieves the specified metadata from the virtual disk as an u8 byte buffer.
-    pub fn get_metadata(&self, item: &Guid) -> Result<Vec<u8>, ResultCode> {
+    pub fn get_metadata(&self, item: &Guid) -> WinResult<Vec<u8>> {
         let mut buffer: Vec<u8> = Vec::new();
         let mut buffer_size: u32 = 0;
 
@@ -444,8 +444,8 @@ impl VirtualDisk {
                 buffer.as_mut_ptr() as *mut Void,
             );
 
-            match error_code_to_result_code(result) {
-                ResultCode::ErrorInsufficientBuffer => {
+            match error_code_to_winresult_code(result) {
+                WinResultCode::ErrorInsufficientBuffer => {
                     buffer.resize(buffer_size as usize, 0);
 
                     match GetVirtualDiskMetadata(
@@ -458,17 +458,17 @@ impl VirtualDisk {
                             assert_eq!(buffer_size as usize, buffer.len());
                             Ok(buffer)
                         }
-                        result => Err(error_code_to_result_code(result)),
+                        result => Err(error_code_to_winresult_code(result)),
                     }
                 }
-                ResultCode::ErrorSuccess => Ok(buffer),
+                WinResultCode::ErrorSuccess => Ok(buffer),
                 error => Err(error),
             }
         }
     }
 
     /// Sets a metadata item for a virtual disk.
-    pub fn set_metadata(&self, item: &Guid, buffer: &[u8]) -> Result<(), ResultCode> {
+    pub fn set_metadata(&self, item: &Guid, buffer: &[u8]) -> WinResult<()> {
         unsafe {
             match SetVirtualDiskMetadata(
                 self.handle,
@@ -477,17 +477,17 @@ impl VirtualDisk {
                 buffer.as_ptr() as *const Void,
             ) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
 
     /// Deletes metadata from a virtual disk.
-    pub fn delete_metadata(&self, item: &Guid) -> Result<(), ResultCode> {
+    pub fn delete_metadata(&self, item: &Guid) -> WinResult<()> {
         unsafe {
             match DeleteVirtualDiskMetadata(self.handle, item) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -496,7 +496,7 @@ impl VirtualDisk {
     pub fn get_operation_progress(
         &self,
         overlapped: &Overlapped,
-    ) -> Result<VirtualDiskProgress, ResultCode> {
+    ) -> WinResult<VirtualDiskProgress> {
         let mut progress = VirtualDiskProgress {
             operation_status: 0,
             current_value: 0,
@@ -506,7 +506,7 @@ impl VirtualDisk {
         unsafe {
             match GetVirtualDiskOperationProgress(self.handle, overlapped, &mut progress) {
                 0 => Ok(progress),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -518,7 +518,7 @@ impl VirtualDisk {
         flags: u32,
         parameters: &compact_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         let overlapped_ptr = match overlapped {
             Some(overlapped) => overlapped,
             None => std::ptr::null(),
@@ -527,7 +527,7 @@ impl VirtualDisk {
         unsafe {
             match CompactVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -539,7 +539,7 @@ impl VirtualDisk {
         flags: u32,
         parameters: &merge_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         let overlapped_ptr = match overlapped {
             Some(overlapped) => overlapped,
             None => std::ptr::null(),
@@ -548,7 +548,7 @@ impl VirtualDisk {
         unsafe {
             match MergeVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -560,7 +560,7 @@ impl VirtualDisk {
         flags: u32,
         parameters: &expand_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         let overlapped_ptr = match overlapped {
             Some(overlapped) => overlapped,
             None => std::ptr::null(),
@@ -569,7 +569,7 @@ impl VirtualDisk {
         unsafe {
             match ExpandVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -581,7 +581,7 @@ impl VirtualDisk {
         flags: u32,
         parameters: &resize_virtual_disk::Parameters,
         overlapped: Option<&Overlapped>,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         let overlapped_ptr = match overlapped {
             Some(overlapped) => overlapped,
             None => std::ptr::null(),
@@ -590,7 +590,7 @@ impl VirtualDisk {
         unsafe {
             match ResizeVirtualDisk(self.handle, flags, parameters, overlapped_ptr) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -608,34 +608,34 @@ impl VirtualDisk {
         flags: u32,
         parameters: &mirror_virtual_disk::Parameters,
         overlapped: &Overlapped,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         unsafe {
             match MirrorVirtualDisk(self.handle, flags, parameters, overlapped) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
 
     /// Breaks a previously initiated mirror operation and sets the mirror to be the active virtual disk.
-    pub fn break_mirror(&self) -> Result<(), ResultCode> {
+    pub fn break_mirror(&self) -> WinResult<()> {
         unsafe {
             match BreakMirrorVirtualDisk(self.handle) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
 
     /// Attaches a parent to a virtual disk opened with the `open_virtual_disk::Flag::CustomDiffChain` flag.
-    pub fn add_parent(&self, parent_path: &str) -> Result<(), ResultCode> {
+    pub fn add_parent(&self, parent_path: &str) -> WinResult<()> {
         unsafe {
             match AddVirtualDiskParent(
                 self.handle,
                 WideCString::from_str(parent_path).unwrap().as_ptr(),
             ) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -654,7 +654,7 @@ impl VirtualDisk {
         byte_length: u64,
         flags: u32,
         ranges: &mut [query_changes_virtual_disk::Range],
-    ) -> Result<(u32, u64), ResultCode> {
+    ) -> WinResult<(u32, u64)> {
         let mut range_count: u32 = ranges.len() as u32;
         let mut processed_length: u64 = 0;
 
@@ -670,7 +670,7 @@ impl VirtualDisk {
                 &mut processed_length,
             ) {
                 0 => Ok((range_count, processed_length)),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -681,11 +681,11 @@ impl VirtualDisk {
         &self,
         parameters: &take_snapshot_vhdset::Parameters,
         flags: u32,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         unsafe {
             match TakeSnapshotVhdSet(self.handle, parameters, flags) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -696,11 +696,11 @@ impl VirtualDisk {
         &self,
         parameters: &delete_snapshot_vhdset::Parameters,
         flags: u32,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         unsafe {
             match DeleteSnapshotVhdSet(self.handle, parameters, flags) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -712,11 +712,11 @@ impl VirtualDisk {
         &self,
         parameters: &modify_vhdset::Parameters,
         flags: u32,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         unsafe {
             match ModifyVhdSet(self.handle, parameters, flags) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -727,11 +727,11 @@ impl VirtualDisk {
         &self,
         parameters: &apply_snapshot_vhdset::Parameters,
         flags: u32,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         unsafe {
             match ApplySnapshotVhdSet(self.handle, parameters, flags) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -742,7 +742,7 @@ impl VirtualDisk {
         &self,
         parameters: &raw_scsi_virtual_disk::Parameters,
         flags: u32,
-    ) -> Result<raw_scsi_virtual_disk::Response, ResultCode> {
+    ) -> WinResult<raw_scsi_virtual_disk::Response> {
         let mut response = raw_scsi_virtual_disk::Response {
             version: raw_scsi_virtual_disk::Version::Unspecified,
             version_details: raw_scsi_virtual_disk::ResponseVersionDetails {
@@ -757,7 +757,7 @@ impl VirtualDisk {
         unsafe {
             match RawSCSIVirtualDisk(self.handle, parameters, flags, &mut response) {
                 0 => Ok(response),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
@@ -770,21 +770,21 @@ impl VirtualDisk {
         flags: u32,
         parameters: &fork_virtual_disk::Parameters,
         overlapped: &mut Overlapped,
-    ) -> Result<(), ResultCode> {
+    ) -> WinResult<()> {
         unsafe {
             match ForkVirtualDisk(self.handle, flags, parameters, overlapped) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
 
     /// Completes a virtual hard disk fork initiated with `VirtualHardDisk::fork`.
-    pub fn complete_fork(&self) -> Result<(), ResultCode> {
+    pub fn complete_fork(&self) -> WinResult<()> {
         unsafe {
             match CompleteForkVirtualDisk(self.handle) {
                 0 => Ok(()),
-                result => Err(error_code_to_result_code(result)),
+                result => Err(error_code_to_winresult_code(result)),
             }
         }
     }
