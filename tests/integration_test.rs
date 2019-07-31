@@ -23,6 +23,39 @@ impl<'a> std::ops::Drop for DeleteDiskScopeExit<'a> {
 }
 
 #[test]
+fn can_create_plain_vhd() {
+    let disk_path = String::from("can_create_plain_vhd.vhdx");
+    let _delete_file_scope_exit = DeleteDiskScopeExit {
+        filepath: &disk_path,
+    };
+
+    let _virtual_disk = create_vhd(&disk_path, 1, 1).unwrap();
+}
+
+#[test]
+fn can_temporarily_mount_plain_vhd() {
+    let disk_path = String::from("can_temporarily_mount_plain_vhd.vhdx");
+    let _delete_file_scope_exit = DeleteDiskScopeExit {
+        filepath: &disk_path,
+    };
+
+    let virtual_disk = create_vhd(&disk_path, 1, 1).unwrap();
+    mount_vhd_temporarily_for_setup(&virtual_disk).unwrap();
+}
+
+#[test]
+fn can_open_temporarily_mounted_plain_vhd() {
+    let disk_path = String::from("can_open_temporarily_mounted_plain_vhd.vhdx");
+    let _delete_file_scope_exit = DeleteDiskScopeExit {
+        filepath: &disk_path,
+    };
+
+    let virtual_disk = create_vhd(&disk_path, 1, 1).unwrap();
+    mount_vhd_temporarily_for_setup(&virtual_disk).unwrap();
+    let _disk = open_vhd_backed_disk(&virtual_disk).unwrap();
+}
+
+#[test]
 fn can_create_base_vhd() {
     let disk_path = String::from("can_create_base_vhd.vhdx");
     let _delete_file_scope_exit = DeleteDiskScopeExit {
