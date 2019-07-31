@@ -12,6 +12,7 @@ categories = ["api-bindings", "os::windows-apis"]
 build = "build.rs"
 
 [dependencies]
+bytefmt = "0.1.7"
 widestring = "0.4.0"
 winapi = { version = "0.3.6", features = [
     "errhandlingapi",
@@ -25,4 +26,4 @@ winapi = { version = "0.3.6", features = [
     "winerror",
     "winioctl",
 ] }
-winutils-rs = "0.1.2"
+winutils-rs = "0.2.0"

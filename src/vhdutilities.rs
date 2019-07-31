@@ -11,7 +11,9 @@
 use crate::diskutilities::*;
 use crate::virtdisk::*;
 use crate::virtdiskdefs::*;
-use winutils_rs::errorcodes::{error_code_to_result_code, result_code_to_error_code, ResultCode};
+use winutils_rs::errorcodes::{
+    error_code_to_winresult_code, winresult_code_to_error_code, WinResult, WinResultCode,
+};
 use winutils_rs::utilities::*;
 use winutils_rs::windefs::*;
 
@@ -22,11 +24,7 @@ pub struct MountedVolume {
 }
 
 /// Creates a new VHD specified by filename.
-pub fn create_vhd(
-    filename: &str,
-    disk_size_gb: u64,
-    block_size_mb: u32,
-) -> Result<VirtualDisk, ResultCode> {
+pub fn create_vhd(filename: &str, disk_size_gb: u64, block_size_mb: u32) -> WinResult<VirtualDisk> {
     let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
     parameters.version = create_virtual_disk::Version::Version2;
     unsafe {
@@ -53,11 +51,7 @@ pub fn create_vhd(
 
 /// Mounts the given VHD into the host.
 /// The flags are a u32 representation of any valid combination from `attach_virtual_disk::Flag` values.
-pub fn mount_vhd(
-    virtual_disk: &VirtualDisk,
-    flags: u32,
-    cache_mode: u16,
-) -> Result<(), ResultCode> {
+pub fn mount_vhd(virtual_disk: &VirtualDisk, flags: u32, cache_mode: u16) -> WinResult<()> {
     use winapi::um::{errhandlingapi, ioapiset, winnt};
 
     let manage_volume = TemporaryPrivilege::new(winnt::SE_MANAGE_VOLUME_NAME);
@@ -72,6 +66,8 @@ pub fn mount_vhd(
         internal_reserved_flags: UShort,
         cache_mode: UShort,
         qos_flow_id: Guid,
+        restricted_offset: u64,
+        restricted_length: u64,
     }
 
     unsafe {
@@ -91,7 +87,7 @@ pub fn mount_vhd(
             std::ptr::null_mut(),
         ) == 0
         {
-            return Err(error_code_to_result_code(errhandlingapi::GetLastError()));
+            return Err(error_code_to_winresult_code(errhandlingapi::GetLastError()));
         }
     }
 
@@ -108,10 +104,10 @@ pub fn mount_vhd(
     }
 }
 
-/// Mounts a VHD with temporarily lifetime and without respecting flushes.
+/// Mounts a VHD with temporary lifetime and without respecting flushes.
 /// The expectation is that this is only called during setup, where if there is
 /// a power failure the file would be deleted anyway.
-pub fn mount_vhd_temporarily_for_setup(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
+pub fn mount_vhd_temporarily_for_setup(virtual_disk: &VirtualDisk) -> WinResult<()> {
     mount_vhd(
         virtual_disk,
         attach_virtual_disk::Flag::NoDriveLetter as u32
@@ -122,7 +118,7 @@ pub fn mount_vhd_temporarily_for_setup(virtual_disk: &VirtualDisk) -> Result<(),
 
 /// Attaches a VHD with permanent lifetime, respecting all flushes (but cache metadata in VHDX),
 /// and ensure there is no extra security descriptor applied to the volume object.
-pub fn mount_vhd_permanently_for_use(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
+pub fn mount_vhd_permanently_for_use(virtual_disk: &VirtualDisk) -> WinResult<()> {
     mount_vhd(
         virtual_disk,
         attach_virtual_disk::Flag::NoDriveLetter as u32
@@ -134,12 +130,12 @@ pub fn mount_vhd_permanently_for_use(virtual_disk: &VirtualDisk) -> Result<(), R
 }
 
 /// Dismounts the given VHD from the host.
-pub fn dismount_vhd(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
+pub fn dismount_vhd(virtual_disk: &VirtualDisk) -> WinResult<()> {
     virtual_disk.detach(detach_virtual_disk::Flag::None as u32, 0)
 }
 
 /// Opens a VHD for use as a container sandbox and returns a safe wrapper over the handle.
-pub fn open_vhd(filename: &str, read_only: bool) -> Result<VirtualDisk, ResultCode> {
+pub fn open_vhd(filename: &str, read_only: bool) -> WinResult<VirtualDisk> {
     let default_storage_type = VirtualStorageType {
         device_id: 0,
         vendor_id: VIRTUAL_STORAGE_TYPE_VENDOR_UNKNOWN,
@@ -172,7 +168,7 @@ pub fn create_base_vhd(
     disk_size_gb: u64,
     block_size_mb: u32,
     file_system: &str,
-) -> Result<MountedVolume, ResultCode> {
+) -> WinResult<MountedVolume> {
     let virtual_disk = create_vhd(filename, disk_size_gb, block_size_mb)?;
     mount_vhd_temporarily_for_setup(&virtual_disk)?;
     let disk = open_vhd_backed_disk(&virtual_disk)?;
@@ -185,11 +181,7 @@ pub fn create_base_vhd(
 }
 
 /// Creates a new diff VHD specified by filename based on the given parent disk.
-pub fn create_diff_vhd(
-    filename: &str,
-    parent_name: &str,
-    block_size_mb: u32,
-) -> Result<(), ResultCode> {
+pub fn create_diff_vhd(filename: &str, parent_name: &str, block_size_mb: u32) -> WinResult<()> {
     assert!(block_size_mb <= 256);
     let mut block_size_in_bytes = block_size_mb * 1024 * 1024;
 
@@ -248,7 +240,7 @@ pub fn create_vhd_from_source(
     filename: &str,
     source_filename: &str,
     block_size_mb: u32,
-) -> Result<(), ResultCode> {
+) -> WinResult<()> {
     let source_path_wstr = widestring::WideCString::from_str(source_filename).unwrap();
     let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
     parameters.version = create_virtual_disk::Version::Version2;
@@ -278,13 +270,13 @@ pub fn create_vhd_from_source(
 }
 
 /// Finds the given mounted VHD and returns the resulting volume path.
-pub fn get_vhd_volume_path(virtual_disk: &VirtualDisk) -> Result<String, ResultCode> {
+pub fn get_vhd_volume_path(virtual_disk: &VirtualDisk) -> WinResult<String> {
     let disk = open_vhd_backed_disk(&virtual_disk)?;
     disk.volume_path()
 }
 
 /// Determines the VHD path of the VHD hosting a volume or file within the volume.
-pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
+pub fn get_vhd_from_filename(filename: &str) -> WinResult<String> {
     use winapi::um::{fileapi, winnt};
 
     let file = create_file(
@@ -302,13 +294,13 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
         storage_dependency::GetFlag::HostVolumes as u32,
         storage_dependency::InfoVersion::Version2,
     ) {
-        Err(ResultCode::WindowsErrorCode(error))
+        Err(WinResultCode::WindowsErrorCode(error))
             if error == winapi::shared::winerror::ERROR_VIRTDISK_NOT_VIRTUAL_DISK as u32 =>
         {
             return Ok(String::from(""));
         }
         Err(error)
-            if result_code_to_error_code(error)
+            if winresult_code_to_error_code(error)
                 == winapi::shared::winerror::ERROR_VIRTDISK_NOT_VIRTUAL_DISK as u32 =>
         {
             return Ok(String::from(""));
@@ -336,13 +328,13 @@ pub fn get_vhd_from_filename(filename: &str) -> Result<String, ResultCode> {
                 string.shrink_to_fit();
                 Ok(string)
             }
-            _ => Err(ResultCode::ErrorGenFailure),
+            _ => Err(WinResultCode::ErrorGenFailure),
         }
     }
 }
 
 /// Sets the caching mode on a mounted VHD.
-pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Result<(), ResultCode> {
+pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> WinResult<()> {
     #[repr(C)]
     struct CachePolicyRequest {
         request_level: u32,
@@ -367,7 +359,7 @@ pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Resu
             &mut bytes,
             std::ptr::null_mut(),
         ) {
-            0 => Err(error_code_to_result_code(
+            0 => Err(error_code_to_winresult_code(
                 winapi::um::errhandlingapi::GetLastError(),
             )),
             _ => Ok(()),
@@ -376,13 +368,13 @@ pub fn set_vhd_caching_mode(virtual_disk: &VirtualDisk, cache_mode: u16) -> Resu
 }
 
 /// Returns the size of the VHD on the physical disk.
-pub fn get_physical_vhd_size_in_kb(virtual_disk: &VirtualDisk) -> Result<u64, ResultCode> {
+pub fn get_physical_vhd_size_in_kb(virtual_disk: &VirtualDisk) -> WinResult<u64> {
     let info_wrapper = virtual_disk.get_information(get_virtual_disk::InfoVersion::Size)?;
     unsafe { Ok(info_wrapper.info().version_details.size.physical_size / 1024) }
 }
 
 /// Opens the disk backed by the secified VHD.
-pub fn open_vhd_backed_disk(virtual_disk: &VirtualDisk) -> Result<Disk, ResultCode> {
+pub fn open_vhd_backed_disk(virtual_disk: &VirtualDisk) -> WinResult<Disk> {
     let disk_path = virtual_disk.get_physical_path()?;
     Disk::open(
         &disk_path,
@@ -397,7 +389,7 @@ pub fn open_vhd_backed_disk(virtual_disk: &VirtualDisk) -> Result<Disk, ResultCo
 /// than the requested size.
 /// Returns true if the VHD was expanded, false if the current size of the VHD is already greater
 /// than or equal to the specified new size.
-pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, ResultCode> {
+pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> WinResult<bool> {
     let info_wrapper = virtual_disk.get_information(get_virtual_disk::InfoVersion::Size)?;
 
     if unsafe { info_wrapper.info().version_details.size.virtual_size } < new_size {
@@ -429,7 +421,7 @@ pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, Res
                 &mut bytes,
                 std::ptr::null_mut(),
             ) {
-                0 => Err(error_code_to_result_code(
+                0 => Err(error_code_to_winresult_code(
                     winapi::um::errhandlingapi::GetLastError(),
                 )),
                 _ => Ok(true),
@@ -442,7 +434,7 @@ pub fn expand_vhd(virtual_disk: &VirtualDisk, new_size: u64) -> Result<bool, Res
 
 /// Merges a differencing disk into its immediate parent. This function should be called with caution,
 /// there might be destructive side effects if the parent disk has other child disks.
-pub fn merge_diff_vhd(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
+pub fn merge_diff_vhd(virtual_disk: &VirtualDisk) -> WinResult<()> {
     let event = WinEvent::create(false, false, None, None)?;
     let mut overlapped = unsafe { std::mem::zeroed::<Overlapped>() };
     overlapped.hEvent = event.get_handle();
@@ -459,8 +451,8 @@ pub fn merge_diff_vhd(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
         &parameters,
         Some(&overlapped),
     ) {
-        Err(ResultCode::ErrorIoPending) => wait_for_vhd_operation(&virtual_disk, &overlapped),
-        Err(ResultCode::ErrorSuccess) => {
+        Err(WinResultCode::ErrorIoPending) => wait_for_vhd_operation(&virtual_disk, &overlapped),
+        Err(WinResultCode::ErrorSuccess) => {
             panic!("Success case on a merge call with overlapped struct is unexpected!")
         }
         Err(error) => Err(error),
@@ -472,7 +464,7 @@ pub fn merge_diff_vhd(virtual_disk: &VirtualDisk) -> Result<(), ResultCode> {
 pub fn wait_for_vhd_operation(
     virtual_disk: &VirtualDisk,
     overlapped: &Overlapped,
-) -> Result<(), ResultCode> {
+) -> WinResult<()> {
     loop {
         let progress = virtual_disk.get_operation_progress(overlapped)?;
 
@@ -486,11 +478,11 @@ pub fn wait_for_vhd_operation(
             }
             winapi::shared::winerror::ERROR_OPERATION_ABORTED => {
                 // Job was canceled
-                return Err(ResultCode::ErrorOperationAborted);
+                return Err(WinResultCode::ErrorOperationAborted);
             }
             error => {
                 // Job failed
-                return Err(error_code_to_result_code(error));
+                return Err(error_code_to_winresult_code(error));
             }
         }
 

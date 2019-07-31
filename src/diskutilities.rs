@@ -9,7 +9,7 @@
 //! Wrappers around basic disk functions used to setup container storage.
 
 use winutils_rs::diskformat::*;
-use winutils_rs::errorcodes::{error_code_to_result_code, ResultCode};
+use winutils_rs::errorcodes::{error_code_to_winresult_code, WinResult, WinResultCode};
 use winutils_rs::utilities::*;
 use winutils_rs::windefs::*;
 
@@ -75,9 +75,9 @@ impl std::ops::Drop for Disk {
 impl Disk {
     /// Wraps the supplied disk handle, providing a safe drop implementation that will close the handle
     /// on the end of its lifetime.
-    pub fn wrap_handle(handle: Handle) -> Result<Disk, ResultCode> {
+    pub fn wrap_handle(handle: Handle) -> WinResult<Disk> {
         match handle {
-            handle if handle == std::ptr::null_mut() => Err(ResultCode::ErrorInvalidArgument),
+            handle if handle == std::ptr::null_mut() => Err(WinResultCode::ErrorInvalidArgument),
             handle => Ok(Disk { handle }),
         }
     }
@@ -109,7 +109,7 @@ impl Disk {
         disk_path: &str,
         access_mask: Option<DWord>,
         flags: Option<DWord>,
-    ) -> Result<Disk, ResultCode> {
+    ) -> WinResult<Disk> {
         use winapi::um::{fileapi, winnt};
 
         let access_mask_flags = match access_mask {
@@ -145,7 +145,7 @@ impl Disk {
     }
 
     /// Force the disk to be brought online and surface its volumes.
-    pub fn force_online(&self) -> Result<(), ResultCode> {
+    pub fn force_online(&self) -> WinResult<()> {
         const SET_DISK_ATTRIBUTES_SIZE: DWord = std::mem::size_of::<SetDiskAttributes>() as DWord;
 
         let mut params = SetDiskAttributes {
@@ -168,7 +168,7 @@ impl Disk {
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
             ) {
-                0 => Err(error_code_to_result_code(
+                0 => Err(error_code_to_winresult_code(
                     winapi::um::errhandlingapi::GetLastError(),
                 )),
                 _ => Ok(()),
@@ -178,7 +178,7 @@ impl Disk {
 
     /// Retrieves the path to the first volume on a disk, waiting for the volumes to arrive
     /// if the have not yet.
-    pub fn volume_path(&self) -> Result<String, ResultCode> {
+    pub fn volume_path(&self) -> WinResult<String> {
         use winapi::um::{cfgmgr32, winioctl};
 
         let mut filter = unsafe { std::mem::zeroed::<cfgmgr32::CM_NOTIFY_FILTER>() };
@@ -270,7 +270,7 @@ impl Disk {
     }
 
     /// Initializes, partitions, and formats the given disk into a single volume.
-    pub fn format(&self, file_system: &str) -> Result<PartitionInfo, ResultCode> {
+    pub fn format(&self, file_system: &str) -> WinResult<PartitionInfo> {
         use winapi::um::{ioapiset, winioctl};
 
         let format_module = WinLibrary::load(
@@ -297,7 +297,7 @@ impl Disk {
                 std::ptr::null_mut(),
             ) == 0
             {
-                return Err(error_code_to_result_code(
+                return Err(error_code_to_winresult_code(
                     winapi::um::errhandlingapi::GetLastError(),
                 ));
             }
@@ -324,7 +324,7 @@ impl Disk {
                 std::ptr::null_mut(),
             ) == 0
             {
-                return Err(error_code_to_result_code(
+                return Err(error_code_to_winresult_code(
                     winapi::um::errhandlingapi::GetLastError(),
                 ));
             }
@@ -384,7 +384,7 @@ impl Disk {
                 std::ptr::null_mut(),
             ) == 0
             {
-                return Err(error_code_to_result_code(
+                return Err(error_code_to_winresult_code(
                     winapi::um::errhandlingapi::GetLastError(),
                 ));
             }
@@ -405,7 +405,7 @@ impl Disk {
 
             FORMAT_CONTEXT = Some(FormatContext {
                 event: WinEvent::create(true, false, None, None).unwrap(),
-                result: ResultCode::ErrorSuccess,
+                result: WinResultCode::ErrorSuccess,
             });
 
             // Unfortunately, FormatEx2 can fail if another thread is accessing the volume, perhaps
@@ -438,7 +438,7 @@ impl Disk {
                 if let Some(ref context) = FORMAT_CONTEXT {
                     context.event.wait(winapi::um::winbase::INFINITE);
                     match context.result {
-                        ResultCode::ErrorSuccess => {
+                        WinResultCode::ErrorSuccess => {
                             return Ok(partition_info);
                         }
                         _ => {
@@ -448,13 +448,13 @@ impl Disk {
                 }
             }
 
-            Err(ResultCode::ErrorGenFailure)
+            Err(WinResultCode::ErrorGenFailure)
         }
     }
 
     /// Expands the last basic partition and its file system to occupy any available space left on disk.
     /// Returns true if the file system was expanded, false if there is no more space left for further expansion.
-    pub fn expand_volume(&self) -> Result<bool, ResultCode> {
+    pub fn expand_volume(&self) -> WinResult<bool> {
         #[allow(unused_assignments, dead_code)]
         unsafe {
             use winapi::um::{errhandlingapi, ioapiset, winioctl};
@@ -487,7 +487,7 @@ impl Disk {
                 let error = errhandlingapi::GetLastError();
 
                 if winapi::shared::winerror::ERROR_INSUFFICIENT_BUFFER != error {
-                    return Err(error_code_to_result_code(error));
+                    return Err(error_code_to_winresult_code(error));
                 }
 
                 buffer.reserve(4096);
@@ -503,7 +503,7 @@ impl Disk {
                     std::ptr::null_mut(),
                 ) == 0
                 {
-                    return Err(error_code_to_result_code(
+                    return Err(error_code_to_winresult_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ));
                 }
@@ -515,7 +515,7 @@ impl Disk {
 
             // Find the last basic partition
             if (*drive_layout).PartitionStyle != winioctl::PARTITION_STYLE_GPT {
-                return Err(ResultCode::ErrorInvalidArgument);
+                return Err(WinResultCode::ErrorInvalidArgument);
             }
 
             let mut partition_info: winioctl::PPARTITION_INFORMATION_EX = std::ptr::null_mut();
@@ -534,7 +534,7 @@ impl Disk {
             }
 
             if partition_info == std::ptr::null_mut() {
-                return Err(ResultCode::ErrorInvalidArgument);
+                return Err(WinResultCode::ErrorInvalidArgument);
             }
 
             // Determine the new partition size and extend the partition
@@ -572,7 +572,7 @@ impl Disk {
                     std::ptr::null_mut(),
                 ) == 0
                 {
-                    return Err(error_code_to_result_code(
+                    return Err(error_code_to_winresult_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ));
                 }
@@ -606,7 +606,7 @@ impl Disk {
                     std::ptr::null_mut(),
                 ) == 0
                 {
-                    return Err(error_code_to_result_code(
+                    return Err(error_code_to_winresult_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ));
                 }
@@ -620,7 +620,7 @@ impl Disk {
 }
 
 /// Forces the disk to be brought online and surface its volumes.
-pub fn force_online_disk(handle: Handle) -> Result<(), ResultCode> {
+pub fn force_online_disk(handle: Handle) -> WinResult<()> {
     let mut disk = Disk { handle };
     let result = disk.force_online();
     unsafe {
@@ -630,7 +630,7 @@ pub fn force_online_disk(handle: Handle) -> Result<(), ResultCode> {
 }
 
 /// Retrieves the volume disk path.
-pub fn volume_path_disk(handle: Handle) -> Result<String, ResultCode> {
+pub fn volume_path_disk(handle: Handle) -> WinResult<String> {
     let mut disk = Disk { handle };
     let result = disk.volume_path();
     unsafe {
@@ -650,7 +650,7 @@ impl std::ops::Drop for Volume {
 }
 
 impl Volume {
-    pub fn open(path: &str, access_mask: Option<DWord>) -> Result<Volume, ResultCode> {
+    pub fn open(path: &str, access_mask: Option<DWord>) -> WinResult<Volume> {
         use winapi::um::{fileapi, winnt};
 
         let access_mask_flags = match access_mask {
@@ -675,7 +675,7 @@ impl Volume {
 
 /// Force a volume to be brought online (ie: mounted by a filesystem).
 /// This is needed when automount has been disabled (mountvol /N).
-pub fn force_online_volume(volume_name: &str) -> Result<(), ResultCode> {
+pub fn force_online_volume(volume_name: &str) -> WinResult<()> {
     use winapi::um::{ioapiset, winioctl};
 
     match Volume::open(volume_name, None) {
@@ -694,7 +694,7 @@ pub fn force_online_volume(volume_name: &str) -> Result<(), ResultCode> {
                     std::ptr::null_mut(),
                 ) == 0
                 {
-                    return Err(error_code_to_result_code(
+                    return Err(error_code_to_winresult_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ));
                 }
@@ -710,7 +710,7 @@ pub fn force_online_volume(volume_name: &str) -> Result<(), ResultCode> {
                     std::ptr::null_mut(),
                 ) == 0
                 {
-                    return Err(error_code_to_result_code(
+                    return Err(error_code_to_winresult_code(
                         winapi::um::errhandlingapi::GetLastError(),
                     ));
                 }
@@ -761,7 +761,7 @@ impl std::ops::Drop for SafeFindVolumeHandle {
 
 /// Tries to get the volume path of the volume in a disk.
 /// Returns an empty string if the volume is not found.
-fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
+fn try_get_disk_volume_path(handle: Handle) -> WinResult<String> {
     use winapi::um::{fileapi, ioapiset, winioctl};
 
     let mut dev_number = StorageDeviceNumber {
@@ -784,7 +784,7 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
             std::ptr::null_mut(),
         ) == 0
         {
-            return Err(error_code_to_result_code(
+            return Err(error_code_to_winresult_code(
                 winapi::um::errhandlingapi::GetLastError(),
             ));
         }
@@ -795,7 +795,7 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
             fileapi::FindFirstVolumeW(volume_name_buffer.as_mut_ptr(), MAX_PATH as DWord);
 
         if find_volume_handle == std::ptr::null_mut() {
-            return Err(error_code_to_result_code(
+            return Err(error_code_to_winresult_code(
                 winapi::um::errhandlingapi::GetLastError(),
             ));
         }
@@ -851,7 +851,7 @@ fn try_get_disk_volume_path(handle: Handle) -> Result<String, ResultCode> {
 /// Context structure used for asynchronous volume arrival.
 struct VolumeArrivalCallbackContext<'event, 'result> {
     event: &'event mut WinEvent,
-    path_result: &'result mut Result<String, ResultCode>,
+    path_result: &'result mut WinResult<String>,
     disk_handle: Handle,
 }
 
@@ -892,10 +892,11 @@ pub struct NtFileSystemInfo {
     pub ntfs_volume_serial_number: u64,
     pub ntfs_version: String,
     pub lfs_version: String,
-    pub number_sectors: u64,
+    pub total_sectors: u64,
     pub total_clusters: u64,
     pub free_clusters: u64,
-    pub total_reserved: u64,
+    pub total_reserved_clusters: u64,
+    pub reserved_for_storage_reserve: u64,
     pub bytes_per_sector: u32,
     pub bytes_per_physical_sector: u32,
     pub bytes_per_cluster: u32,
@@ -906,6 +907,7 @@ pub struct NtFileSystemInfo {
     pub mft2_start_lcn: u64,
     pub mft_zone_start: u64,
     pub mft_zone_end: u64,
+    pub mft_zone_size: u64,
     pub max_device_trim_extent_count: u32,
     pub max_device_trim_byte_count: u32,
     pub max_volume_trim_extent_count: u32,
@@ -913,14 +915,14 @@ pub struct NtFileSystemInfo {
     pub resource_manager_identifier: Guid,
 }
 
-pub fn get_ntfsinfo(volume_path: &str) -> Result<NtFileSystemInfo, ResultCode> {
+pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
     let command = format!("fsutil fsinfo ntfsinfo {}", volume_path);
     let output = std::process::Command::new("cmd")
         .args(&["/C", &command])
         .output();
 
     if output.is_err() {
-        return Err(ResultCode::ErrorGenFailure);
+        return Err(WinResultCode::ErrorGenFailure);
     }
 
     let output = output.unwrap();
@@ -930,10 +932,11 @@ pub fn get_ntfsinfo(volume_path: &str) -> Result<NtFileSystemInfo, ResultCode> {
         ntfs_volume_serial_number: 0,
         ntfs_version: String::new(),
         lfs_version: String::new(),
-        number_sectors: 0,
+        total_sectors: 0,
         total_clusters: 0,
         free_clusters: 0,
-        total_reserved: 0,
+        total_reserved_clusters: 0,
+        reserved_for_storage_reserve: 0,
         bytes_per_sector: 0,
         bytes_per_physical_sector: 0,
         bytes_per_cluster: 0,
@@ -944,6 +947,7 @@ pub fn get_ntfsinfo(volume_path: &str) -> Result<NtFileSystemInfo, ResultCode> {
         mft2_start_lcn: 0,
         mft_zone_start: 0,
         mft_zone_end: 0,
+        mft_zone_size: 0,
         max_device_trim_extent_count: 0,
         max_device_trim_byte_count: 0,
         max_volume_trim_extent_count: 0,
@@ -951,14 +955,28 @@ pub fn get_ntfsinfo(volume_path: &str) -> Result<NtFileSystemInfo, ResultCode> {
         resource_manager_identifier: GUID_NULL,
     };
 
+    let u64_from_byte_string_with_parenthesis = |byte_string: &str| -> u64 {
+        let sections: Vec<_> = byte_string.trim().split("(").collect();
+        if sections.len() != 2 {
+            panic!("Expected 2 sections for {:?}", sections);
+        }
+        let value = sections[0].trim().replace(",", "");
+        u64::from_str_radix(&value, 10).expect(&format!("Failed to parse u64 {}", value))
+    };
+
+    let u64_from_byte_string = |byte_string: &str| -> u64 {
+        let byte_string = byte_string.trim();
+        bytefmt::parse(byte_string).expect(&format!("Failed to parse byte string {}", byte_string))
+    };
+
     for line in output_string.lines() {
         let splitted: Vec<_> = line.split(":").collect();
         if splitted.len() == 2 {
             match splitted[0].trim() {
                 "NTFS Volume Serial Number" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.ntfs_volume_serial_number =
-                        u64::from_str_radix(hex_value, 16).unwrap();
+                    let hex_value = splitted[1].trim().trim_start_matches("0x");
+                    ntfsinfo.ntfs_volume_serial_number = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "NTFS Version" => {
                     ntfsinfo.ntfs_version = String::from(splitted[1].trim());
@@ -966,21 +984,22 @@ pub fn get_ntfsinfo(volume_path: &str) -> Result<NtFileSystemInfo, ResultCode> {
                 "LFS Version" => {
                     ntfsinfo.lfs_version = String::from(splitted[1].trim());
                 }
-                "Number Sectors" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.number_sectors = u64::from_str_radix(hex_value, 16).unwrap();
+                "Total Sectors" => {
+                    ntfsinfo.total_sectors = u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
                 "Total Clusters" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.total_clusters = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.total_clusters = u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
                 "Free Clusters" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.free_clusters = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.free_clusters = u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
-                "Total Reserved" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.total_reserved = u64::from_str_radix(hex_value, 16).unwrap();
+                "Total Reserved Clusters" => {
+                    ntfsinfo.total_reserved_clusters =
+                        u64_from_byte_string_with_parenthesis(splitted[1]);
+                }
+                "Reserved For Storage Reserve" => {
+                    ntfsinfo.reserved_for_storage_reserve =
+                        u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
                 "Bytes Per Sector" => {
                     ntfsinfo.bytes_per_sector = splitted[1].trim().parse::<u32>().unwrap();
@@ -1000,42 +1019,48 @@ pub fn get_ntfsinfo(volume_path: &str) -> Result<NtFileSystemInfo, ResultCode> {
                         splitted[1].trim().parse::<u32>().unwrap();
                 }
                 "Mft Valid Data Length" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.mft_valid_data_length = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.mft_valid_data_length = u64_from_byte_string(splitted[1]);
                 }
                 "Mft Start Lcn" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.mft_start_lcn = u64::from_str_radix(hex_value, 16).unwrap();
+                    let hex_value = splitted[1].trim().trim_start_matches("0x");
+                    ntfsinfo.mft_start_lcn = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Mft2 Start Lcn" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.mft2_start_lcn = u64::from_str_radix(hex_value, 16).unwrap();
+                    let hex_value = splitted[1].trim().trim_start_matches("0x");
+                    ntfsinfo.mft2_start_lcn = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Mft Zone Start" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.mft_zone_start = u64::from_str_radix(hex_value, 16).unwrap();
+                    let hex_value = splitted[1].trim().trim_start_matches("0x");
+                    ntfsinfo.mft_zone_start = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Mft Zone End" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.mft_zone_end = u64::from_str_radix(hex_value, 16).unwrap();
+                    let hex_value = splitted[1].trim().trim_start_matches("0x");
+                    ntfsinfo.mft_zone_end = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
+                }
+                "Mft Zone Size" => {
+                    ntfsinfo.mft_zone_size = u64_from_byte_string(splitted[1]);
                 }
                 "Max Device Trim Extent Count" => {
                     ntfsinfo.max_device_trim_extent_count =
                         splitted[1].trim().parse::<u32>().unwrap();
                 }
                 "Max Device Trim Byte Count" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.max_device_trim_byte_count =
-                        u32::from_str_radix(hex_value, 16).unwrap();
+                    let hex_value = splitted[1].trim().trim_start_matches("0x");
+                    ntfsinfo.max_device_trim_byte_count = u32::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Max Volume Trim Extent Count" => {
                     ntfsinfo.max_volume_trim_extent_count =
                         splitted[1].trim().parse::<u32>().unwrap();
                 }
                 "Max Volume Trim Byte Count" => {
-                    let hex_value = splitted[1].trim().trim_left_matches("0x");
-                    ntfsinfo.max_volume_trim_byte_count =
-                        u32::from_str_radix(hex_value, 16).unwrap();
+                    let hex_value = splitted[1].trim().trim_start_matches("0x");
+                    ntfsinfo.max_volume_trim_byte_count = u32::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Resource Manager Identifier" => {
                     ntfsinfo.resource_manager_identifier = parse_guid(splitted[1].trim()).unwrap();

@@ -27,8 +27,8 @@
 //! **_Note: This section includes the paths in the Windows SDK for the header and lib files based on the default installation path `c:\Program Files (x86)\Windows Kits\10`._**
 //!
 //! The relevant Windows 10 SDK files that this project is wrapping are:
-//! - C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um\virtdisk.h
-//! - C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0\um\x64\virtdisk.lib
+//! - C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\um\virtdisk.h
+//! - C:\Program Files (x86)\Windows Kits\10\Lib\10.0.18362.0\um\x64\virtdisk.lib
 //! - C:\Windows\System32\virtdisk.dll
 //!
 
