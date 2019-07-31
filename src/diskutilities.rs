@@ -892,10 +892,11 @@ pub struct NtFileSystemInfo {
     pub ntfs_volume_serial_number: u64,
     pub ntfs_version: String,
     pub lfs_version: String,
-    pub number_sectors: u64,
+    pub total_sectors: u64,
     pub total_clusters: u64,
     pub free_clusters: u64,
-    pub total_reserved: u64,
+    pub total_reserved_clusters: u64,
+    pub reserved_for_storage_reserve: u64,
     pub bytes_per_sector: u32,
     pub bytes_per_physical_sector: u32,
     pub bytes_per_cluster: u32,
@@ -906,6 +907,7 @@ pub struct NtFileSystemInfo {
     pub mft2_start_lcn: u64,
     pub mft_zone_start: u64,
     pub mft_zone_end: u64,
+    pub mft_zone_size: u64,
     pub max_device_trim_extent_count: u32,
     pub max_device_trim_byte_count: u32,
     pub max_volume_trim_extent_count: u32,
@@ -930,10 +932,11 @@ pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
         ntfs_volume_serial_number: 0,
         ntfs_version: String::new(),
         lfs_version: String::new(),
-        number_sectors: 0,
+        total_sectors: 0,
         total_clusters: 0,
         free_clusters: 0,
-        total_reserved: 0,
+        total_reserved_clusters: 0,
+        reserved_for_storage_reserve: 0,
         bytes_per_sector: 0,
         bytes_per_physical_sector: 0,
         bytes_per_cluster: 0,
@@ -944,11 +947,26 @@ pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
         mft2_start_lcn: 0,
         mft_zone_start: 0,
         mft_zone_end: 0,
+        mft_zone_size: 0,
         max_device_trim_extent_count: 0,
         max_device_trim_byte_count: 0,
         max_volume_trim_extent_count: 0,
         max_volume_trim_byte_count: 0,
         resource_manager_identifier: GUID_NULL,
+    };
+
+    let u64_from_byte_string_with_parenthesis = |byte_string: &str| -> u64 {
+        let sections: Vec<_> = byte_string.trim().split("(").collect();
+        if sections.len() != 2 {
+            panic!("Expected 2 sections for {:?}", sections);
+        }
+        let value = sections[0].trim().replace(",", "");
+        u64::from_str_radix(&value, 10).expect(&format!("Failed to parse u64 {}", value))
+    };
+
+    let u64_from_byte_string = |byte_string: &str| -> u64 {
+        let byte_string = byte_string.trim();
+        bytefmt::parse(byte_string).expect(&format!("Failed to parse byte string {}", byte_string))
     };
 
     for line in output_string.lines() {
@@ -957,8 +975,8 @@ pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
             match splitted[0].trim() {
                 "NTFS Volume Serial Number" => {
                     let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.ntfs_volume_serial_number =
-                        u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.ntfs_volume_serial_number = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "NTFS Version" => {
                     ntfsinfo.ntfs_version = String::from(splitted[1].trim());
@@ -966,21 +984,22 @@ pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
                 "LFS Version" => {
                     ntfsinfo.lfs_version = String::from(splitted[1].trim());
                 }
-                "Number Sectors" => {
-                    let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.number_sectors = u64::from_str_radix(hex_value, 16).unwrap();
+                "Total Sectors" => {
+                    ntfsinfo.total_sectors = u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
                 "Total Clusters" => {
-                    let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.total_clusters = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.total_clusters = u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
                 "Free Clusters" => {
-                    let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.free_clusters = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.free_clusters = u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
-                "Total Reserved" => {
-                    let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.total_reserved = u64::from_str_radix(hex_value, 16).unwrap();
+                "Total Reserved Clusters" => {
+                    ntfsinfo.total_reserved_clusters =
+                        u64_from_byte_string_with_parenthesis(splitted[1]);
+                }
+                "Reserved For Storage Reserve" => {
+                    ntfsinfo.reserved_for_storage_reserve =
+                        u64_from_byte_string_with_parenthesis(splitted[1]);
                 }
                 "Bytes Per Sector" => {
                     ntfsinfo.bytes_per_sector = splitted[1].trim().parse::<u32>().unwrap();
@@ -1000,24 +1019,30 @@ pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
                         splitted[1].trim().parse::<u32>().unwrap();
                 }
                 "Mft Valid Data Length" => {
-                    let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.mft_valid_data_length = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.mft_valid_data_length = u64_from_byte_string(splitted[1]);
                 }
                 "Mft Start Lcn" => {
                     let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.mft_start_lcn = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.mft_start_lcn = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Mft2 Start Lcn" => {
                     let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.mft2_start_lcn = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.mft2_start_lcn = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Mft Zone Start" => {
                     let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.mft_zone_start = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.mft_zone_start = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Mft Zone End" => {
                     let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.mft_zone_end = u64::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.mft_zone_end = u64::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
+                }
+                "Mft Zone Size" => {
+                    ntfsinfo.mft_zone_size = u64_from_byte_string(splitted[1]);
                 }
                 "Max Device Trim Extent Count" => {
                     ntfsinfo.max_device_trim_extent_count =
@@ -1025,8 +1050,8 @@ pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
                 }
                 "Max Device Trim Byte Count" => {
                     let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.max_device_trim_byte_count =
-                        u32::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.max_device_trim_byte_count = u32::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Max Volume Trim Extent Count" => {
                     ntfsinfo.max_volume_trim_extent_count =
@@ -1034,8 +1059,8 @@ pub fn get_ntfsinfo(volume_path: &str) -> WinResult<NtFileSystemInfo> {
                 }
                 "Max Volume Trim Byte Count" => {
                     let hex_value = splitted[1].trim().trim_start_matches("0x");
-                    ntfsinfo.max_volume_trim_byte_count =
-                        u32::from_str_radix(hex_value, 16).unwrap();
+                    ntfsinfo.max_volume_trim_byte_count = u32::from_str_radix(hex_value, 16)
+                        .expect(&format!("Failed to parse hex {} ", hex_value));
                 }
                 "Resource Manager Identifier" => {
                     ntfsinfo.resource_manager_identifier = parse_guid(splitted[1].trim()).unwrap();
