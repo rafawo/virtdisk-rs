@@ -66,6 +66,8 @@ pub fn mount_vhd(virtual_disk: &VirtualDisk, flags: u32, cache_mode: u16) -> Win
         internal_reserved_flags: UShort,
         cache_mode: UShort,
         qos_flow_id: Guid,
+        restricted_offset: u64,
+        restricted_length: u64,
     }
 
     unsafe {
@@ -102,7 +104,7 @@ pub fn mount_vhd(virtual_disk: &VirtualDisk, flags: u32, cache_mode: u16) -> Win
     }
 }
 
-/// Mounts a VHD with temporarily lifetime and without respecting flushes.
+/// Mounts a VHD with temporary lifetime and without respecting flushes.
 /// The expectation is that this is only called during setup, where if there is
 /// a power failure the file would be deleted anyway.
 pub fn mount_vhd_temporarily_for_setup(virtual_disk: &VirtualDisk) -> WinResult<()> {
