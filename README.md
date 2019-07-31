@@ -13,7 +13,7 @@ VirtDisk APIs are part of the [Windows 10 SDK](https://developer.microsoft.com/e
 
 For this wrapper to build properly, the following requirements need to be met by the building machine:
 
-- Windows 10 SDK version **10.0.17763.132**.
+- Windows 10 SDK version **10.0.18362.0**.
 - **amd64** architecture.
   - This Rust wrapper, for now, expects to build only in amd64.
 
@@ -22,8 +22,8 @@ For this wrapper to build properly, the following requirements need to be met by
 **_Note: This section includes the paths in the Windows SDK for the header and lib files based on the default installation path `c:\Program Files (x86)\Windows Kits\10`._**
 
 The relevant Windows 10 SDK files that this project is wrapping are:
-- C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um\virtdisk.h
-- C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0\um\x64\virtdisk.lib
+- C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\um\virtdisk.h
+- C:\Program Files (x86)\Windows Kits\10\Lib\10.0.18362.0\um\x64\virtdisk.lib
 - C:\Windows\System32\virtdisk.dll
 
 ## How to use locally
@@ -34,7 +34,7 @@ Clone the repo to a folder:
 git clone https://github.com/rafawo/virtdisk-rs.git
 ```
 
-Make sure the machine where you are building has Windows 10 SDK version Windows 10 SDK version **10.0.17763.132** installed. Then run:
+Make sure the machine where you are building has Windows 10 SDK version **10.0.17763.132** installed. Then run:
 
 ```
 cd virtdisk-rs
