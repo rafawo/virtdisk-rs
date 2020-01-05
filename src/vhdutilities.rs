@@ -27,10 +27,8 @@ pub struct MountedVolume {
 pub fn create_vhd(filename: &str, disk_size_gb: u64, block_size_mb: u32) -> WinResult<VirtualDisk> {
     let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
     parameters.version = create_virtual_disk::Version::Version2;
-    unsafe {
-        parameters.version_details.version2.maximum_size = disk_size_gb * 1024 * 1024 * 1024;
-        parameters.version_details.version2.block_size_in_bytes = block_size_mb * 1024 * 1024;
-    }
+    parameters.version_details.version2.maximum_size = disk_size_gb * 1024 * 1024 * 1024;
+    parameters.version_details.version2.block_size_in_bytes = block_size_mb * 1024 * 1024;
 
     let default_storage_type = VirtualStorageType {
         device_id: 0,
@@ -209,11 +207,9 @@ pub fn create_diff_vhd(filename: &str, parent_name: &str, block_size_mb: u32) ->
     let parent_name_wstr = widestring::WideCString::from_str(parent_name).unwrap();
     let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
     parameters.version = create_virtual_disk::Version::Version2;
-    unsafe {
-        parameters.version_details.version2.parent_path = parent_name_wstr.as_ptr();
-        parameters.version_details.version2.block_size_in_bytes = block_size_in_bytes;
-        parameters.version_details.version2.open_flags = open_virtual_disk::Flag::CachedIo as u32;
-    }
+    parameters.version_details.version2.parent_path = parent_name_wstr.as_ptr();
+    parameters.version_details.version2.block_size_in_bytes = block_size_in_bytes;
+    parameters.version_details.version2.open_flags = open_virtual_disk::Flag::CachedIo as u32;
 
     let default_storage_type = VirtualStorageType {
         device_id: 0,
@@ -244,11 +240,9 @@ pub fn create_vhd_from_source(
     let source_path_wstr = widestring::WideCString::from_str(source_filename).unwrap();
     let mut parameters = unsafe { std::mem::zeroed::<create_virtual_disk::Parameters>() };
     parameters.version = create_virtual_disk::Version::Version2;
-    unsafe {
-        parameters.version_details.version2.source_path = source_path_wstr.as_ptr();
-        parameters.version_details.version2.block_size_in_bytes = block_size_mb * 1024 * 1024;
-        parameters.version_details.version2.open_flags = open_virtual_disk::Flag::CachedIo as u32;
-    }
+    parameters.version_details.version2.source_path = source_path_wstr.as_ptr();
+    parameters.version_details.version2.block_size_in_bytes = block_size_mb * 1024 * 1024;
+    parameters.version_details.version2.open_flags = open_virtual_disk::Flag::CachedIo as u32;
 
     let default_storage_type = VirtualStorageType {
         device_id: 0,
@@ -441,10 +435,8 @@ pub fn merge_diff_vhd(virtual_disk: &VirtualDisk) -> WinResult<()> {
 
     let mut parameters = unsafe { std::mem::zeroed::<merge_virtual_disk::Parameters>() };
     parameters.version = merge_virtual_disk::Version::Version2;
-    unsafe {
-        parameters.version_details.version2.merge_source_depth = 1;
-        parameters.version_details.version2.merge_target_depth = 2;
-    }
+    parameters.version_details.version2.merge_source_depth = 1;
+    parameters.version_details.version2.merge_target_depth = 2;
 
     match virtual_disk.merge(
         merge_virtual_disk::Flag::None as u32,
